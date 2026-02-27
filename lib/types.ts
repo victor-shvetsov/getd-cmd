@@ -1,11 +1,16 @@
 // ---- Tab keys ----
 export const TAB_KEYS = [
+  // New vision tabs (primary)
+  "sales",
+  "demand",
+  "activity",
+  "assets",
+  "automations",
+  "execution",
+  // Legacy tabs (kept during transition, hidden from new clients)
   "brief",
   "marketing_channels",
-  "demand",
   "website",
-  "assets",
-  "execution",
 ] as const;
 export type TabKey = (typeof TAB_KEYS)[number];
 
@@ -237,6 +242,29 @@ export interface ExecutionItem {
   invoice_pdf?: string;
 }
 
+// ---- Sales (Tab 1: "Am I selling enough?") ----
+export interface SalesData {
+  revenue_goal: number;           // Monthly revenue target in local currency
+  currency: string;               // "DKK", "EUR", etc.
+  product_categories: ProductCategory[];
+}
+
+export interface ProductCategory {
+  id: string;
+  name: string;                   // "Automatic machines", "Coffee beans"
+  sort_order: number;
+}
+
+// ---- Activity (Tab 3: "What is my marketing guy doing?") ----
+export interface ActivityData {
+  placeholder?: boolean;          // Tab data lives in the activity_entries table
+}
+
+// ---- Automations (Tab 5: "What's working on autopilot?") ----
+export interface AutomationData {
+  placeholder?: boolean;          // Tab data lives in the automations table
+}
+
 // ---- Client Types ----
 export const CLIENT_TYPES = [
   "service_outbound",
@@ -464,6 +492,49 @@ export interface ClientConfig {
   }[];
   subscriptions: SubscriptionRow[];
   translations: Record<string, Record<string, Record<string, string>>>;
+}
+
+// ---- Sales Entries (offline + online sales tracking) ----
+export interface SalesEntryRow {
+  id: string;
+  client_id: string;
+  category_id: string | null;     // links to ProductCategory.id or null for uncategorized
+  category_name: string;          // denormalized: "Automatic machines"
+  amount: number;                 // revenue amount in local currency
+  currency: string;
+  source: "online" | "offline" | "manual"; // where the sale came from
+  note: string | null;            // optional note ("Trade show sale")
+  sold_at: string;                // when the sale happened
+  created_at: string;
+  updated_at: string;
+}
+
+// ---- Activity Entries (what-we-did log) ----
+export interface ActivityEntryRow {
+  id: string;
+  client_id: string;
+  title: string;                  // "Updated product pages"
+  description: string | null;     // optional longer description
+  category: string | null;        // "seo" | "ads" | "website" | "automation" | "general"
+  is_visible: boolean;            // admin can hide entries
+  created_at: string;
+  updated_at: string;
+}
+
+// ---- Automations (n8n workflow toggles + counters) ----
+export interface AutomationRow {
+  id: string;
+  client_id: string;
+  name: string;                   // "Auto-reply to new leads"
+  description: string;            // "Sends a personal reply to every new enquiry within 2 minutes"
+  automation_key: string;         // unique key for n8n webhook: "lead_reply", "social_poster", "review_collector"
+  is_enabled: boolean;            // on/off toggle state
+  counter_label: string;          // "leads replied" | "jobs posted" | "reviews collected"
+  counter_value: number;          // current month's count
+  webhook_url: string | null;     // n8n webhook URL for on/off toggle
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export type Lang = string;
