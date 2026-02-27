@@ -57,12 +57,13 @@ export function CheckoutModal({
     }, 1500);
   }, [onComplete]);
 
+  const c = currency?.toLowerCase() || "dkk";
   const currencySymbol =
-    currency?.toLowerCase() === "usd"
-      ? "$"
-      : currency?.toLowerCase() === "gbp"
-        ? "\u00A3"
-        : "\u20AC";
+    c === "usd" ? "$"
+    : c === "gbp" ? "\u00A3"
+    : c === "eur" ? "\u20AC"
+    : c === "dkk" || c === "sek" || c === "nok" ? "kr "
+    : `${currency} `;
 
   return (
     <div
