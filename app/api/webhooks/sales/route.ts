@@ -62,8 +62,9 @@ export async function POST(req: NextRequest) {
 
   // ── Parse body ──
   const body = await req.json();
+  const topLevelSlug: string | undefined = body.client_slug;
   const rawEntries: RawEntry[] = Array.isArray(body.entries)
-    ? body.entries
+    ? body.entries.map((e: RawEntry) => ({ ...e, client_slug: e.client_slug || topLevelSlug }))
     : [body];
 
   if (rawEntries.length === 0) {

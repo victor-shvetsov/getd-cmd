@@ -20,6 +20,7 @@ import { TabDataEditor } from "@/components/admin/tab-data-editor";
 import { KnowledgeBank } from "@/components/admin/knowledge-bank";
 import { BrandingEditor } from "@/components/admin/branding-editor";
 import { SubscriptionsManager } from "@/components/admin/subscriptions-manager";
+import { IntegrationsEditor } from "@/components/admin/integrations-editor";
 import { AdminThemeToggle } from "./admin-theme-toggle";
 
 interface ClientResponse {
@@ -39,7 +40,7 @@ interface ClientEditorProps {
   toggleTheme: () => void;
 }
 
-type EditorSection = "general" | "branding" | "subscriptions" | "knowledge" | "tabs";
+type EditorSection = "general" | "branding" | "subscriptions" | "integrations" | "knowledge" | "tabs";
 
 export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme, toggleTheme }: ClientEditorProps) {
   const authFetcher = useCallback(
@@ -109,6 +110,7 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
     { key: "general", label: "General" },
     { key: "branding", label: "Branding" },
     { key: "subscriptions", label: "Subscriptions" },
+    { key: "integrations", label: "Integrations" },
     { key: "knowledge", label: "Knowledge Bank" },
     { key: "tabs", label: "Tab Data" },
   ];
@@ -246,6 +248,15 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
         )}
         {section === "subscriptions" && (
           <SubscriptionsManager clientId={clientId} token={token} />
+        )}
+        {section === "integrations" && (
+          <IntegrationsEditor
+            clientId={clientId}
+            clientSlug={client.slug}
+            clientName={client.name}
+            currency={client.currency ?? "DKK"}
+            token={token}
+          />
         )}
         {section === "knowledge" && (
           <KnowledgeBank clientId={clientId} token={token} />
