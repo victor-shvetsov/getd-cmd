@@ -338,7 +338,7 @@
       "demand": {
         "market_opportunity": "Сколько людей ищут",
         "full_research": "Полный анализ",
-        "total_addressable": "Все, кто ищет то, что вы продаёте",
+        "total_addressable": "Все, кто ищет то, что ��ы продаёте",
         "searches_per_month": "запросов / мес.",
         "keywords_tracked": "Запросы",
         "services": "Услуги",
@@ -604,7 +604,7 @@
   "i_agree_to_terms": "\u0421\u043e\u0433\u043b\u0430\u0441\u0435\u043d \u0441 \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u043c\u0438",
   "ready_to_grow": "\u0413\u043e\u0442\u043e\u0432\u044b \u043a \u0440\u043e\u0441\u0442\u0443",
   "your_services": "\u0412\u0430\u0448\u0438 \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0435 \u0443\u0441\u043b\u0443\u0433\u0438"
-  }
+      }
   },
   "da": {
       "common": {
