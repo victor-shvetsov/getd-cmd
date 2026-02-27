@@ -1,0 +1,19 @@
+Campaign,Ad Group,Keyword,Avg. monthly searches,Top of page bid (low),Top of page bid (high),Match type,Landing Page
+Search|General,General,adas calibration,1600,3.82,20.18,Broad,/adas-calibration
+Search|General,General,adas calibration near me,880,3.06,12.40,Broad,/adas-calibration
+Search|General,General,adas calibration service,390,4.15,18.50,Phrase,/adas-calibration
+Search|General,General,adas calibration cost,170,1.71,8.26,Broad,/adas-calibration
+Search|General,General,what is adas calibration,260,0.85,3.20,Broad,/blog/what-is-adas-calibration
+Search|General,General,adas system repair,110,3.50,15.80,Phrase,/adas-calibration
+Search|Mobile,Mobile Adas Calibration,mobile adas calibration,110,3.82,16.73,Phrase,/mobile-adas-calibration
+Search|Mobile,Mobile Adas Calibration,mobile adas calibration near me,50,4.20,14.50,Broad,/mobile-adas-calibration
+Search|Mobile,Mobile Adas Calibration,adas calibration at your location,30,3.90,12.80,Broad,/mobile-adas-calibration
+Search|Location,Cities,adas calibration miami,90,2.60,11.79,Phrase,/locations/miami
+Search|Location,Cities,adas calibration fort lauderdale,50,2.80,10.50,Phrase,/locations/fort-lauderdale
+Search|Location,Cities,adas calibration west palm beach,50,2.40,9.80,Phrase,/locations/west-palm-beach
+Search|Services,Camera Calibration,forward facing camera calibration,70,3.20,14.60,Phrase,/services/camera-calibration
+Search|Services,Camera Calibration,windshield camera calibration,90,3.50,16.20,Broad,/services/camera-calibration
+Search|Services,Radar Calibration,front radar calibration,40,4.10,18.90,Phrase,/services/radar-calibration
+Search|Services,Radar Calibration,blind spot sensor calibration,60,3.80,15.40,Broad,/services/radar-calibration
+Search|Brand,Brand Terms,safetech adas,50,0.60,2.10,Exact,/
+Search|Brand,Brand Terms,safetech calibration,30,0.55,1.80,Exact,/
