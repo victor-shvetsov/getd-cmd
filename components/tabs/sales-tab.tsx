@@ -16,6 +16,7 @@ import {
   UserPlus,
   Check,
 } from "lucide-react";
+import { t } from "@/lib/i18n";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -59,26 +60,31 @@ interface SalesTabProps {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Source tag config                                                   */
+/*  Source tag config (labels resolved at render time via i18n)         */
 /* ------------------------------------------------------------------ */
-const SOURCE_TAGS = [
-  { key: "online", label: "Online", icon: Globe, color: "#3b82f6" },
-  { key: "networking", label: "Networking", icon: Users, color: "#8b5cf6" },
-  { key: "walk_in", label: "Walk-in", icon: Footprints, color: "#f59e0b" },
-  { key: "referral", label: "Referral", icon: UserPlus, color: "#10b981" },
-  { key: "trade_show", label: "Trade show", icon: Store, color: "#ec4899" },
-  { key: "manual", label: "Manual", icon: PenLine, color: "#6b7280" },
+const SOURCE_TAG_KEYS = [
+  { key: "online", i18nKey: "source_online", icon: Globe, color: "#3b82f6" },
+  { key: "networking", i18nKey: "source_networking", icon: Users, color: "#8b5cf6" },
+  { key: "walk_in", i18nKey: "source_walk_in", icon: Footprints, color: "#f59e0b" },
+  { key: "referral", i18nKey: "source_referral", icon: UserPlus, color: "#10b981" },
+  { key: "trade_show", i18nKey: "source_trade_show", icon: Store, color: "#ec4899" },
+  { key: "manual", i18nKey: "source_manual", icon: PenLine, color: "#6b7280" },
 ] as const;
 
 function getSourceConfig(key: string | null) {
-  return SOURCE_TAGS.find((s) => s.key === key) ?? null;
+  return SOURCE_TAG_KEYS.find((s) => s.key === key) ?? null;
 }
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
+type Tx = Record<string, unknown>;
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+function s(key: string, lang: string, translations: Tx, fallback: string): string {
+  return t(`sales.${key}`, lang, translations as Record<string, Record<string, Record<string, string>>>) || fallback;
+}
 
 function fmtCurrency(amount: number, currency: string): string {
   const code = currency.toUpperCase();
@@ -119,7 +125,7 @@ function shiftMonth(monthStr: string, delta: number): string {
 function getMonthLabel(monthStr: string, lang: string): string {
   const [y, m] = monthStr.split("-").map(Number);
   const d = new Date(y, m - 1);
-  const locale = lang === "da" ? "da-DK" : lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : "en-US";
+  const locale = lang === "da" ? "da-DK" : lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : lang === "ro" ? "ro-RO" : lang === "ru" ? "ru-RU" : "en-US";
   return d.toLocaleDateString(locale, { month: "long", year: "numeric" });
 }
 
@@ -207,16 +213,20 @@ function ProgressRing({
 function TagPicker({
   onSelect,
   onClose,
+  lang,
+  translations,
 }: {
   onSelect: (source: string) => void;
   onClose: () => void;
+  lang: string;
+  translations: Tx;
 }) {
   return (
     <div
       className="flex flex-wrap gap-1.5 rounded-xl p-2"
       style={{ backgroundColor: "var(--surface-2, #f5f5f5)", border: "1px solid var(--border-1, #e5e7eb)" }}
     >
-      {SOURCE_TAGS.filter((t) => t.key !== "manual").map((tag) => {
+      {SOURCE_TAG_KEYS.filter((t) => t.key !== "manual").map((tag) => {
         const Icon = tag.icon;
         return (
           <button
@@ -226,7 +236,7 @@ function TagPicker({
             style={{ backgroundColor: `${tag.color}18`, color: tag.color }}
           >
             <Icon className="h-3 w-3" />
-            {tag.label}
+            {s(tag.i18nKey, lang, translations, tag.key)}
           </button>
         );
       })}
@@ -248,10 +258,14 @@ function SaleRow({
   entry,
   currency,
   onTag,
+  lang,
+  translations,
 }: {
   entry: SaleEntry;
   currency: string;
   onTag: (id: string, source: string) => void;
+  lang: string;
+  translations: Tx;
 }) {
   const [showPicker, setShowPicker] = useState(false);
   const [justTagged, setJustTagged] = useState(false);
@@ -259,7 +273,8 @@ function SaleRow({
   const src = getSourceConfig(entry.source);
   const Icon = src?.icon ?? Tag;
 
-  const dateStr = new Date(entry.sold_at).toLocaleDateString("da-DK", {
+  const locale = lang === "da" ? "da-DK" : lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : lang === "ro" ? "ro-RO" : lang === "ru" ? "ru-RU" : "en-US";
+  const dateStr = new Date(entry.sold_at).toLocaleDateString(locale, {
     day: "numeric",
     month: "short",
   });
@@ -270,6 +285,8 @@ function SaleRow({
     setJustTagged(true);
     setTimeout(() => setJustTagged(false), 1500);
   };
+
+  const sourceLabel = src ? s(src.i18nKey, lang, translations, src.key) : entry.source;
 
   return (
     <div
@@ -310,10 +327,10 @@ function SaleRow({
 
       {/* Source tag / picker */}
       {showPicker ? (
-        <TagPicker onSelect={handleSelect} onClose={() => setShowPicker(false)} />
+        <TagPicker onSelect={handleSelect} onClose={() => setShowPicker(false)} lang={lang} translations={translations} />
       ) : justTagged ? (
         <span className="flex items-center gap-1 self-start text-xs font-medium" style={{ color: "#22c55e" }}>
-          <Check className="h-3 w-3" /> Tagged
+          <Check className="h-3 w-3" /> {s("tagged", lang, translations, "Tagged")}
         </span>
       ) : (
         <button
@@ -333,7 +350,7 @@ function SaleRow({
           }
         >
           <Icon className="h-3 w-3" />
-          {isUntagged ? "Tag this sale" : src?.label || entry.source}
+          {isUntagged ? s("tag_this_sale", lang, translations, "Tag this sale") : sourceLabel}
           {!isUntagged && <PenLine className="h-2.5 w-2.5 opacity-40" />}
         </button>
       )}
@@ -351,18 +368,24 @@ function AddSaleSheet({
   categories,
   onClose,
   onAdded,
+  lang,
+  translations,
 }: {
   clientId: string;
   currency: string;
   categories: { id: string; name: string }[];
   onClose: () => void;
   onAdded: () => void;
+  lang: string;
+  translations: Tx;
 }) {
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState(categories[0]?.name || "Other");
+  const [category, setCategory] = useState(categories[0]?.name || s("other", lang, translations, "Other"));
   const [customerName, setCustomerName] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const otherLabel = s("other", lang, translations, "Other");
 
   const handleSubmit = async () => {
     if (!amount || Number(amount) <= 0) return;
@@ -398,12 +421,12 @@ function AddSaleSheet({
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full opacity-20" style={{ backgroundColor: "currentColor" }} />
         <div className="mb-5 flex items-center justify-between">
-          <h3 className="text-base font-semibold">Add a sale</h3>
+          <h3 className="text-base font-semibold">{s("add_a_sale", lang, translations, "Add a sale")}</h3>
           <button onClick={onClose} className="rounded-lg p-1.5 hover:opacity-70"><X className="h-5 w-5" /></button>
         </div>
         <div className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium opacity-50">Amount ({currency})</label>
+            <label className="mb-1.5 block text-xs font-medium opacity-50">{s("amount", lang, translations, "Amount")} ({currency})</label>
             <input
               type="number" inputMode="numeric" value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -413,18 +436,18 @@ function AddSaleSheet({
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium opacity-50">Customer name (optional)</label>
+            <label className="mb-1.5 block text-xs font-medium opacity-50">{s("customer_name", lang, translations, "Customer name (optional)")}</label>
             <input
               type="text" value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Name..."
+              placeholder="..."
               className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2"
               style={{ backgroundColor: "var(--surface-2, #eee)", borderColor: "var(--border-1, #ddd)", color: "inherit" }}
             />
           </div>
           {categories.length > 0 && (
             <div>
-              <label className="mb-1.5 block text-xs font-medium opacity-50">Category</label>
+              <label className="mb-1.5 block text-xs font-medium opacity-50">{s("category", lang, translations, "Category")}</label>
               <div className="flex flex-wrap gap-2">
                 {categories.map((cat) => (
                   <button
@@ -438,22 +461,22 @@ function AddSaleSheet({
                   >{cat.name}</button>
                 ))}
                 <button
-                  onClick={() => setCategory("Other")}
+                  onClick={() => setCategory(otherLabel)}
                   className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all"
                   style={{
-                    backgroundColor: category === "Other" ? "var(--client-primary, #3b82f6)" : "var(--surface-2, #eee)",
-                    color: category === "Other" ? "#fff" : "inherit",
-                    opacity: category === "Other" ? 1 : 0.6,
+                    backgroundColor: category === otherLabel ? "var(--client-primary, #3b82f6)" : "var(--surface-2, #eee)",
+                    color: category === otherLabel ? "#fff" : "inherit",
+                    opacity: category === otherLabel ? 1 : 0.6,
                   }}
-                >Other</button>
+                >{otherLabel}</button>
               </div>
             </div>
           )}
           <div>
-            <label className="mb-1.5 block text-xs font-medium opacity-50">Note (optional)</label>
+            <label className="mb-1.5 block text-xs font-medium opacity-50">{s("note_optional", lang, translations, "Note (optional)")}</label>
             <input
               type="text" value={note} onChange={(e) => setNote(e.target.value)}
-              placeholder="Trade show sale, walk-in..."
+              placeholder={s("note_placeholder", lang, translations, "Trade show sale, walk-in...")}
               className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2"
               style={{ backgroundColor: "var(--surface-2, #eee)", borderColor: "var(--border-1, #ddd)", color: "inherit" }}
             />
@@ -464,7 +487,7 @@ function AddSaleSheet({
             className="mt-1 w-full rounded-xl py-3.5 text-sm font-bold text-white transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-30"
             style={{ backgroundColor: "var(--client-primary, #3b82f6)" }}
           >
-            {saving ? "Saving..." : `Add ${amount ? fmtCurrency(Number(amount), currency) : "sale"}`}
+            {saving ? s("saving", lang, translations, "Saving...") : `${s("add_amount", lang, translations, "Add")} ${amount ? fmtCurrency(Number(amount), currency) : ""}`}
           </button>
         </div>
       </div>
@@ -476,7 +499,8 @@ function AddSaleSheet({
 /*  Main Sales Tab                                                     */
 /* ------------------------------------------------------------------ */
 
-export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
+export function SalesTab({ clientId, currency, lang, translations: rawTx }: SalesTabProps) {
+  const tx: Tx = (rawTx ?? {}) as Tx;
   const [month, setMonth] = useState(getCurrentMonth);
   const [showAddSale, setShowAddSale] = useState(false);
 
@@ -498,7 +522,6 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
 
   const handleTag = useCallback(
     async (id: string, source: string) => {
-      // Optimistic update
       if (data) {
         mutate(
           {
@@ -540,16 +563,18 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
 
   const statusMessage = useMemo(() => {
     if (!isCurrent) {
-      if (revenueGoal === 0) return `${fmtCurrency(totalRevenue, currency)} total`;
-      return progressPct >= 100 ? "Goal reached!" : `${Math.round(progressPct)}% of goal`;
+      if (revenueGoal === 0) return `${fmtCurrency(totalRevenue, currency)} ${s("total", lang, tx, "total")}`;
+      return progressPct >= 100
+        ? s("goal_reached", lang, tx, "Goal reached!")
+        : `${Math.round(progressPct)}% ${s("pct_of_goal", lang, tx, "of goal")}`;
     }
     if (revenueGoal === 0) return "";
-    if (progressPct >= 100) return "Goal reached! Keep going!";
+    if (progressPct >= 100) return s("goal_reached_keep", lang, tx, "Goal reached! Keep going!");
     const ratio = timePct > 0 ? progressPct / timePct : 0;
-    if (ratio >= 1.0) return "Ahead of schedule";
-    if (ratio >= 0.7) return "Slightly behind, but close";
-    return "Time to push harder";
-  }, [isCurrent, revenueGoal, totalRevenue, progressPct, timePct, currency]);
+    if (ratio >= 1.0) return s("ahead_of_schedule", lang, tx, "Ahead of schedule");
+    if (ratio >= 0.7) return s("slightly_behind", lang, tx, "Slightly behind, but close");
+    return s("push_harder", lang, tx, "Time to push harder");
+  }, [isCurrent, revenueGoal, totalRevenue, progressPct, timePct, currency, lang, tx]);
 
   // Split entries
   const untaggedEntries = useMemo(() => data?.entries.filter((e) => !e.source) ?? [], [data]);
@@ -621,7 +646,7 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
             </span>
             {revenueGoal > 0 && (
               <span className="mt-0.5 text-center text-[11px] opacity-40">
-                of {fmtCompact(revenueGoal, currency)}
+                {s("of_goal", lang, tx, "of")} {fmtCompact(revenueGoal, currency)}
               </span>
             )}
           </ProgressRing>
@@ -641,8 +666,8 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
         {isCurrent && revenueGoal > 0 && (
           <div className="mt-2 w-full max-w-[200px]">
             <div className="flex items-center justify-between text-[10px] opacity-30">
-              <span>Day {daysInfo.dayOfMonth}</span>
-              <span>{daysInfo.daysInMonth} days</span>
+              <span>{s("day", lang, tx, "Day")} {daysInfo.dayOfMonth}</span>
+              <span>{daysInfo.daysInMonth} {s("days", lang, tx, "days")}</span>
             </div>
             <div className="mt-0.5 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: "var(--surface-3)" }}>
               <div
@@ -666,7 +691,9 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
           <Tag className="h-4 w-4 shrink-0" style={{ color: "var(--client-primary, #3b82f6)" }} />
           <span className="text-xs" style={{ color: "var(--client-primary, #3b82f6)" }}>
             <strong>{data!.untagged_count}</strong>{" "}
-            {data!.untagged_count === 1 ? "invoice needs" : "invoices need"} tagging
+            {data!.untagged_count === 1
+              ? s("invoice_needs_tagging", lang, tx, "invoice needs tagging")
+              : s("invoices_need_tagging", lang, tx, "invoices need tagging")}
           </span>
         </div>
       )}
@@ -674,9 +701,11 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
       {/* ---- UNTAGGED TRANSACTIONS ---- */}
       {untaggedEntries.length > 0 && (
         <div className="flex flex-col gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest opacity-30">Needs tagging</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest opacity-30">
+            {s("needs_tagging", lang, tx, "Needs tagging")}
+          </span>
           {untaggedEntries.map((entry) => (
-            <SaleRow key={entry.id} entry={entry} currency={currency} onTag={handleTag} />
+            <SaleRow key={entry.id} entry={entry} currency={currency} onTag={handleTag} lang={lang} translations={tx} />
           ))}
         </div>
       )}
@@ -684,7 +713,9 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
       {/* ---- CATEGORY BREAKDOWN ---- */}
       {byCategory.length > 0 && (
         <div className="flex flex-col gap-3 rounded-2xl p-4" style={{ backgroundColor: "var(--surface-1)" }}>
-          <h3 className="text-xs font-semibold uppercase tracking-wider opacity-40">{"What\u2019s selling"}</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider opacity-40">
+            {s("whats_selling", lang, tx, "What\u2019s selling")}
+          </h3>
           <div className="flex flex-col gap-2.5">
             {byCategory.map((cat) => {
               const catPct = totalRevenue > 0 ? (cat.total / totalRevenue) * 100 : 0;
@@ -713,7 +744,9 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
       {/* ---- SOURCE BREAKDOWN ---- */}
       {Object.keys(bySource).filter((k) => k !== "untagged").length > 0 && (
         <div className="flex flex-col gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest opacity-30">Where sales come from</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest opacity-30">
+            {s("where_from", lang, tx, "Where sales come from")}
+          </span>
           <div className="flex flex-wrap gap-2">
             {Object.entries(bySource)
               .filter(([k]) => k !== "untagged")
@@ -728,7 +761,9 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
                     style={{ backgroundColor: `${cfg?.color || "#6b7280"}12` }}
                   >
                     <SrcIcon className="h-3 w-3" style={{ color: cfg?.color || "#6b7280" }} />
-                    <span className="text-xs font-medium" style={{ color: cfg?.color || "#6b7280" }}>{cfg?.label || src}</span>
+                    <span className="text-xs font-medium" style={{ color: cfg?.color || "#6b7280" }}>
+                      {cfg ? s(cfg.i18nKey, lang, tx, cfg.key) : src}
+                    </span>
                     <span className="text-xs font-bold tabular-nums" style={{ color: cfg?.color || "#6b7280" }}>
                       {fmtCurrency(amount, currency)}
                     </span>
@@ -742,9 +777,11 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
       {/* ---- ALL TAGGED TRANSACTIONS ---- */}
       {taggedEntries.length > 0 && (
         <div className="flex flex-col gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest opacity-30">All transactions</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest opacity-30">
+            {s("all_transactions", lang, tx, "All transactions")}
+          </span>
           {taggedEntries.map((entry) => (
-            <SaleRow key={entry.id} entry={entry} currency={currency} onTag={handleTag} />
+            <SaleRow key={entry.id} entry={entry} currency={currency} onTag={handleTag} lang={lang} translations={tx} />
           ))}
         </div>
       )}
@@ -753,7 +790,7 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
       {data && data.entry_count === 0 && (
         <div className="flex flex-col items-center gap-2 py-10 opacity-30">
           <Store className="h-8 w-8" />
-          <span className="text-sm">No sales this month</span>
+          <span className="text-sm">{s("no_sales", lang, tx, "No sales this month")}</span>
         </div>
       )}
 
@@ -763,7 +800,7 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
           onClick={() => setShowAddSale(true)}
           className="fixed bottom-24 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition-all hover:scale-110 active:scale-95"
           style={{ backgroundColor: "var(--client-primary, #3b82f6)" }}
-          aria-label="Add a sale"
+          aria-label={s("add_a_sale", lang, tx, "Add a sale")}
         >
           <Plus className="h-5 w-5" />
         </button>
@@ -777,6 +814,8 @@ export function SalesTab({ clientId, currency, lang }: SalesTabProps) {
           categories={categories}
           onClose={() => setShowAddSale(false)}
           onAdded={handleSaleAdded}
+          lang={lang}
+          translations={tx}
         />
       )}
     </div>
