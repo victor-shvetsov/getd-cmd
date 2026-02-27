@@ -364,8 +364,6 @@ function PendingCard({
         {!showCheckout && (
           <button
             onClick={() => {
-              console.log("[v0] Start service clicked. needsTerms:", needsTerms, "termsAccepted:", termsAccepted, "sub.terms_text:", !!sub.terms_text);
-              alert(`[DEBUG] Start service clicked! needsTerms=${needsTerms}, termsAccepted=${termsAccepted}, sub=${sub.service_label}`);
               if (needsTerms) return;
               setShowCheckout(true);
             }}

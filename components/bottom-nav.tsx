@@ -3,21 +3,29 @@
 import { getTabLabel } from "@/lib/i18n";
 import type { TabKey, BrandingConfig } from "@/lib/types";
 import {
+  BarChart3,
+  Search,
+  ClipboardList,
+  FolderOpen,
+  Zap,
+  Rocket,
   FileText,
   Megaphone,
-  TrendingUp,
   Globe,
-  FolderOpen,
-  ListChecks,
 } from "lucide-react";
 
 const TAB_ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
+  // New vision tabs
+  sales: BarChart3,
+  demand: Search,
+  activity: ClipboardList,
+  assets: FolderOpen,
+  automations: Zap,
+  execution: Rocket,
+  // Legacy tabs
   brief: FileText,
   marketing_channels: Megaphone,
-  demand: TrendingUp,
   website: Globe,
-  assets: FolderOpen,
-  execution: ListChecks,
 };
 
 interface BottomNavProps {

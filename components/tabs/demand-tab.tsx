@@ -9,10 +9,7 @@ import {
   ExternalLink,
   ChevronDown,
   Search,
-  BarChart3,
-  TrendingUp,
   Globe,
-  DollarSign,
 } from "lucide-react";
 
 interface Props {
@@ -53,7 +50,7 @@ export function DemandTab({ data, lang, translations }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-[11px] font-bold uppercase tracking-wider opacity-45">
-          {t("demand.market_opportunity", lang, translations) || "Market Demand"}
+          {t("demand.market_opportunity", lang, translations) || "Your Market"}
         </h2>
         {ppcSheetLink && (
           <a
@@ -69,50 +66,35 @@ export function DemandTab({ data, lang, translations }: Props) {
         )}
       </div>
 
-      {/* Hero stats -- the "opportunity at a glance" */}
+      {/* Hero -- "How many people need what you sell?" */}
       <div
         className="flex flex-col gap-3 rounded-2xl p-4"
         style={{
-          background: "linear-gradient(135deg, var(--client-primary, #3b82f6)08, var(--client-primary, #3b82f6)03)",
+          backgroundColor: "var(--surface-1)",
           borderRadius: "var(--client-radius, 0.75rem)",
         }}
       >
-        <div className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" style={{ color: "var(--client-primary, #3b82f6)", opacity: 0.7 }} />
-          <span className="text-xs font-semibold opacity-60">
-            {t("demand.total_addressable", lang, translations) || "Total Addressable Demand"}
-          </span>
-        </div>
+        <span className="text-xs font-medium opacity-40">
+          {t("demand.people_searching", lang, translations) || "People searching for your products every month"}
+        </span>
         <div className="flex items-baseline gap-2">
           <span
-            className="text-3xl font-bold tabular-nums"
+            className="text-4xl font-bold tabular-nums"
             style={{ color: "var(--client-primary, #3b82f6)" }}
           >
             {fmtVolume(summary.total_monthly_searches)}
           </span>
-          <span className="text-sm opacity-40">
-            {t("demand.searches_per_month", lang, translations) || "searches / month"}
-          </span>
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <MiniStat
-            icon={Search}
-            value={summary.total_keywords.toString()}
-            label={t("demand.keywords_tracked", lang, translations) || "Keywords"}
-          />
+        <div className="grid grid-cols-2 gap-2">
           <MiniStat
             icon={Globe}
             value={summary.pages_targeted.toString()}
-            label={t("demand.services", lang, translations) || "Services"}
+            label={t("demand.your_products", lang, translations) || "Your products"}
           />
           <MiniStat
-            icon={DollarSign}
-            value={
-              summary.avg_cpc_high > 0
-                ? `${fmtCurrency(summary.avg_cpc_low, currency)}-${fmtCurrency(summary.avg_cpc_high, currency)}`
-                : "-"
-            }
-            label={t("demand.est_cpc", lang, translations) || "Est. CPC"}
+            icon={Search}
+            value={summary.total_keywords.toString()}
+            label={t("demand.search_terms", lang, translations) || "Search terms"}
           />
         </div>
       </div>
@@ -120,7 +102,7 @@ export function DemandTab({ data, lang, translations }: Props) {
       {/* Service breakdown -- grouped by landing page */}
       <div className="flex flex-col gap-2">
         <span className="text-[10px] font-bold uppercase tracking-widest opacity-35">
-          {t("demand.by_service", lang, translations) || "Demand by Service"}
+          {t("demand.by_service", lang, translations) || "What people are looking for"}
         </span>
 
           {summary.by_page.map((page, pi) => (

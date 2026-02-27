@@ -303,6 +303,7 @@ export interface ClientRow {
   project_objective: string;
   default_language: string;
   available_languages: string[];
+  currency: string;
   stripe_customer_id: string | null;
   created_at: string;
   updated_at: string;
@@ -480,6 +481,7 @@ export interface ClientConfig {
   client_type: ClientType;
   project_objective: string;
   logo_url: string | null;
+  currency: string;
   branding: BrandingConfig;
   default_language: string;
   available_languages: string[];

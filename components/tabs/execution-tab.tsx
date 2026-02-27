@@ -503,14 +503,9 @@ export function ExecutionTab({ data, baseData, lang, translations: tr, clientId,
   const [checkoutIdx, setCheckoutIdx] = useState<number | null>(null);
 
   const handlePay = useCallback((itemIndex: number) => {
-    console.log("[v0] handlePay called. itemIndex:", itemIndex, "clientId:", clientId, "slug:", slug, "item:", allItems[itemIndex]?.action);
-    alert(`[DEBUG] handlePay fired! itemIndex=${itemIndex}, clientId=${clientId}, slug=${slug}`);
-    if (!clientId || !slug) {
-      console.log("[v0] BLOCKED: missing clientId or slug");
-      return;
-    }
+    if (!clientId || !slug) return;
     setCheckoutIdx(itemIndex);
-  }, [clientId, slug, allItems]);
+  }, [clientId, slug]);
 
   const handleCheckoutComplete = useCallback(() => {
     setCheckoutIdx(null);

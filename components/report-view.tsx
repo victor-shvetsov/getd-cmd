@@ -4,12 +4,15 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import type { ClientConfig, TabKey } from "@/lib/types";
 import { BottomNav } from "@/components/bottom-nav";
 import { LanguagePicker } from "@/components/language-picker";
+import { SalesTab } from "@/components/tabs/sales-tab";
+import { DemandTab } from "@/components/tabs/demand-tab";
+import { ActivityTab } from "@/components/tabs/activity-tab";
+import { AssetsTab } from "@/components/tabs/assets-tab";
+import { AutomationsTab } from "@/components/tabs/automations-tab";
+import { ExecutionTab } from "@/components/tabs/execution-tab";
 import { BriefTab } from "@/components/tabs/brief-tab";
 import { MarketingChannelsTab } from "@/components/tabs/marketing-channels-tab";
-import { DemandTab } from "@/components/tabs/demand-tab";
 import { WebsiteTab } from "@/components/tabs/website-tab";
-import { AssetsTab } from "@/components/tabs/assets-tab";
-import { ExecutionTab } from "@/components/tabs/execution-tab";
 import { mergeTranslation } from "@/lib/i18n";
 import Image from "next/image";
 
@@ -54,7 +57,7 @@ export function ReportView({ config }: ReportViewProps) {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const activeTab = visibleTabs[activeIndex] ?? "brief";
+  const activeTab = visibleTabs[activeIndex] ?? "sales";
   const b = config.branding;
 
   // Navigate to a given index with animation
@@ -259,16 +262,17 @@ export function ReportView({ config }: ReportViewProps) {
     const data = getTabData(tabKey);
     const translations = config.translations;
     switch (tabKey) {
-      case "brief":
-        return <BriefTab data={data} lang={lang} translations={translations} />;
-      case "marketing_channels":
-        return <MarketingChannelsTab data={data} baseData={getBaseTabData(tabKey)} lang={lang} translations={translations} />;
+      // ---- New vision tabs ----
+      case "sales":
+        return <SalesTab data={data} lang={lang} translations={translations} clientId={config.id} currency={config.currency || "DKK"} />;
       case "demand":
         return <DemandTab data={data} baseData={getBaseTabData(tabKey)} lang={lang} translations={translations} />;
-      case "website":
-        return <WebsiteTab data={data} baseData={getBaseTabData(tabKey)} lang={lang} translations={translations} />;
+      case "activity":
+        return <ActivityTab data={data} lang={lang} translations={translations} clientId={config.id} />;
       case "assets":
         return <AssetsTab data={data} lang={lang} translations={translations} />;
+      case "automations":
+        return <AutomationsTab data={data} lang={lang} translations={translations} clientId={config.id} />;
       case "execution":
         return (
           <ExecutionTab
@@ -282,6 +286,13 @@ export function ReportView({ config }: ReportViewProps) {
             onRefresh={() => window.location.reload()}
           />
         );
+      // ---- Legacy tabs ----
+      case "brief":
+        return <BriefTab data={data} lang={lang} translations={translations} />;
+      case "marketing_channels":
+        return <MarketingChannelsTab data={data} baseData={getBaseTabData(tabKey)} lang={lang} translations={translations} />;
+      case "website":
+        return <WebsiteTab data={data} baseData={getBaseTabData(tabKey)} lang={lang} translations={translations} />;
     }
   };
 

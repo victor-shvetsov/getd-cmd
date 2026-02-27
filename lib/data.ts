@@ -76,6 +76,7 @@ export async function getClientBySlug(
     client_type: client.client_type ?? "service_outbound",
     project_objective: client.project_objective ?? "",
     logo_url: client.logo_url,
+    currency: client.currency ?? "DKK",
     branding: {
       primary_color: client.primary_color,
       secondary_color: client.secondary_color,
