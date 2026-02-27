@@ -7,10 +7,12 @@ import {
   Check,
   Webhook,
   Clock,
-  ShieldCheck,
+  Database,
   ChevronDown,
   Tag,
   AlertCircle,
+  Zap,
+  ArrowRight,
 } from "lucide-react";
 
 interface IntegrationsEditorProps {
@@ -41,7 +43,8 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
   );
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [payloadOpen, setPayloadOpen] = useState(false);
+  const [n8nFieldsOpen, setN8nFieldsOpen] = useState(false);
+  const [webhookOpen, setWebhookOpen] = useState(false);
   const [sourceTagsOpen, setSourceTagsOpen] = useState(false);
 
   const webhookUrl = typeof window !== "undefined"
@@ -54,23 +57,21 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
     setTimeout(() => setCopiedField(null), 2000);
   }, []);
 
-  const samplePayload = JSON.stringify({
-    client_slug: clientSlug,
-    entries: [
-      {
-        amount: 45000,
-        currency: currency || "DKK",
-        category_name: "Product / Service name",
-        customer_name: "Customer Name",
-        description: "Invoice description",
-        external_ref: "INV-2026-001",
-        sold_at: new Date().toISOString(),
-        source: null,
-      },
-    ],
+  // n8n Supabase node column mapping (for copy-paste into n8n)
+  const n8nColumnMapping = JSON.stringify({
+    client_id: clientId,
+    amount: "={{ $json.invoice_amount }}",
+    currency: currency || "DKK",
+    category_name: "={{ $json.product_category }}",
+    customer_name: "={{ $json.customer_name }}",
+    description: "={{ $json.description }}",
+    external_ref: "={{ $json.invoice_number }}",
+    sold_at: "={{ $json.invoice_date }}",
+    source: "={{ $json.ai_tag || null }}",
   }, null, 2);
 
-  const batchPayload = JSON.stringify({
+  // Webhook payload examples
+  const webhookPayload = JSON.stringify({
     client_slug: clientSlug,
     entries: [
       {
@@ -83,22 +84,7 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
         sold_at: "2026-02-25T10:00:00Z",
         source: null,
       },
-      {
-        amount: 3500,
-        currency: currency || "DKK",
-        category_name: "Coffee Beans",
-        customer_name: "Mette Andersen",
-        description: "Premium blend 1kg x3",
-        external_ref: "INV-2026-042",
-        sold_at: "2026-02-25T14:30:00Z",
-        source: "online",
-      },
     ],
-  }, null, 2);
-
-  const n8nHeaders = JSON.stringify({
-    "Content-Type": "application/json",
-    "Authorization": "Bearer YOUR_SALES_WEBHOOK_SECRET",
   }, null, 2);
 
   const CopyButton = ({ text, field, label }: { text: string; field: string; label?: string }) => (
@@ -128,172 +114,239 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Webhook Endpoint */}
+
+      {/* ── How it works ── */}
+      <div
+        className="rounded-lg border p-4"
+        style={{ borderColor: "var(--adm-border)", backgroundColor: "color-mix(in srgb, var(--adm-accent) 5%, var(--adm-surface))" }}
+      >
+        <div className="mb-3 flex items-center gap-2">
+          <Zap className="h-4 w-4" style={{ color: "var(--adm-accent-text)" }} />
+          <h3 className="text-sm font-semibold">How Sales Data Flows</h3>
+        </div>
+        <div className="flex flex-col gap-2">
+          {[
+            { from: "Accounting Software", to: "n8n", desc: "Cron fetches new invoices" },
+            { from: "n8n AI Node", to: "Tag source", desc: "AI auto-tags online/offline/etc." },
+            { from: "n8n Supabase Node", to: "sales_entries", desc: "Upsert with dedup on external_ref" },
+            { from: "Client opens app", to: "Sees sales", desc: "Tags untagged entries manually" },
+          ].map((step, i) => (
+            <div key={i} className="flex items-center gap-2 text-[11px]">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ backgroundColor: "var(--adm-accent)", color: "#fff" }}>
+                {i + 1}
+              </span>
+              <span className="font-medium" style={{ color: "var(--adm-text)" }}>{step.from}</span>
+              <ArrowRight className="h-3 w-3 flex-shrink-0" style={{ color: "var(--adm-text-muted)" }} />
+              <span className="font-medium" style={{ color: "var(--adm-accent-text)" }}>{step.to}</span>
+              <span className="ml-auto hidden text-[10px] sm:block" style={{ color: "var(--adm-text-muted)" }}>{step.desc}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Primary: Supabase Direct (n8n) ── */}
       <div
         className="rounded-lg border p-4"
         style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}
       >
-        <div className="mb-3 flex items-center gap-2">
-          <Webhook className="h-4 w-4" style={{ color: "var(--adm-accent-text)" }} />
-          <h3 className="text-sm font-semibold">Sales Webhook</h3>
+        <div className="mb-1 flex items-center gap-2">
+          <Database className="h-4 w-4" style={{ color: "#3ECF8E" }} />
+          <h3 className="text-sm font-semibold">n8n Supabase Node</h3>
+          <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "color-mix(in srgb, #3ECF8E 15%, transparent)", color: "#3ECF8E" }}>
+            Primary
+          </span>
         </div>
         <p className="mb-4 text-xs leading-relaxed" style={{ color: "var(--adm-text-muted)" }}>
-          Push invoices from any source (e-conomic, Stripe, Shopify, etc.) via n8n.
-          Duplicates are automatically skipped based on <code className="rounded px-1 py-0.5 text-[10px]" style={{ backgroundColor: "var(--adm-surface-2)" }}>external_ref</code>.
+          Use n8n{"'"}s native Supabase node to insert directly into the database. Fastest, simplest, no middleware.
         </p>
 
         <div className="flex flex-col gap-3">
-          {/* URL */}
+          {/* Table name */}
           <div>
-            <label className="mb-1 block text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>
-              Endpoint URL
-            </label>
+            <label className="mb-1 block text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>Table Name</label>
             <div className="flex items-center gap-2">
-              <code
-                className="flex-1 truncate rounded-md px-3 py-2 text-xs"
-                style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}
-              >
-                POST {webhookUrl}
+              <code className="flex-1 rounded-md px-3 py-2 text-xs font-mono" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}>
+                sales_entries
               </code>
-              <CopyButton text={webhookUrl} field="url" />
+              <CopyButton text="sales_entries" field="table" />
             </div>
           </div>
 
-          {/* Client Slug */}
+          {/* Operation */}
+          <div>
+            <label className="mb-1 block text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>Operation</label>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded-md px-3 py-2 text-xs font-mono" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}>
+                Upsert
+              </code>
+            </div>
+            <p className="mt-1 text-[10px]" style={{ color: "var(--adm-text-placeholder)" }}>
+              Conflict columns: <code className="font-mono">client_id, external_ref</code> -- duplicates are automatically skipped
+            </p>
+          </div>
+
+          {/* Client ID (hardcoded per client in n8n) */}
           <div>
             <label className="mb-1 block text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>
-              Client Slug (use in payload as <code className="font-mono">client_slug</code>)
+              Client ID <span className="font-normal">(inject dynamically in n8n loop)</span>
             </label>
             <div className="flex items-center gap-2">
-              <code
-                className="flex-1 truncate rounded-md px-3 py-2 text-xs font-mono"
-                style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}
-              >
+              <code className="flex-1 truncate rounded-md px-3 py-2 text-[11px] font-mono" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}>
+                {clientId}
+              </code>
+              <CopyButton text={clientId} field="clientId" />
+            </div>
+          </div>
+
+          {/* Client Slug (alternative identifier) */}
+          <div>
+            <label className="mb-1 block text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>
+              Client Slug <span className="font-normal">(human-readable, for webhook fallback)</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 truncate rounded-md px-3 py-2 text-[11px] font-mono" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}>
                 {clientSlug}
               </code>
               <CopyButton text={clientSlug} field="clientSlug" />
             </div>
-            <p className="mt-1 text-[10px]" style={{ color: "var(--adm-text-placeholder)" }}>
-              In n8n, inject this dynamically per client in your loop
-            </p>
           </div>
+        </div>
 
-          {/* Auth header */}
-          <div>
-            <label className="mb-1 block text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>
-              Authentication Header
-            </label>
-            <div className="flex items-center gap-2">
-              <div
-                className="flex flex-1 items-center gap-2 rounded-md px-3 py-2"
-                style={{ backgroundColor: "var(--adm-bg)", border: "1px solid var(--adm-border)" }}
-              >
-                <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--adm-success)" }} />
-                <code className="text-xs" style={{ color: "var(--adm-text)" }}>
-                  Authorization: Bearer {'$'}{'{'}<span style={{ color: "var(--adm-accent-text)" }}>SALES_WEBHOOK_SECRET</span>{'}'} 
-                </code>
+        {/* Column mapping reference (collapsible) */}
+        <div className="mt-4 rounded-md border" style={{ borderColor: "var(--adm-border)" }}>
+          <button
+            onClick={() => setN8nFieldsOpen(!n8nFieldsOpen)}
+            className="flex w-full items-center justify-between px-3 py-2.5"
+          >
+            <span className="text-[11px] font-semibold">Column Mapping for n8n</span>
+            <ChevronDown
+              className="h-3.5 w-3.5 transition-transform"
+              style={{ color: "var(--adm-text-muted)", transform: n8nFieldsOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+            />
+          </button>
+
+          {n8nFieldsOpen && (
+            <div className="flex flex-col gap-3 border-t px-3 py-3" style={{ borderColor: "var(--adm-border)" }}>
+              {/* Visual column table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr style={{ color: "var(--adm-text-muted)" }}>
+                      <th className="pb-2 text-left font-semibold">Column</th>
+                      <th className="pb-2 text-left font-semibold">Type</th>
+                      <th className="pb-2 text-left font-semibold">Required</th>
+                      <th className="pb-2 text-left font-semibold">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody style={{ color: "var(--adm-text-secondary)" }}>
+                    {[
+                      { col: "client_id", type: "uuid", req: true, desc: "Client UUID (inject from loop)" },
+                      { col: "amount", type: "numeric", req: true, desc: "Invoice amount (e.g. 45000)" },
+                      { col: "currency", type: "text", req: true, desc: `ISO code: ${currency || "DKK"}` },
+                      { col: "category_name", type: "text", req: true, desc: "Product/service category" },
+                      { col: "customer_name", type: "text", req: false, desc: "Customer from invoice" },
+                      { col: "description", type: "text", req: false, desc: "Invoice line description" },
+                      { col: "external_ref", type: "text", req: false, desc: "Invoice number (dedup key)" },
+                      { col: "sold_at", type: "timestamptz", req: false, desc: "Sale date (defaults to now)" },
+                      { col: "source", type: "text", req: false, desc: "null = untagged, or AI-assigned tag" },
+                    ].map((row) => (
+                      <tr key={row.col} className="border-t" style={{ borderColor: "var(--adm-border)" }}>
+                        <td className="py-1.5 pr-3 font-mono" style={{ color: "var(--adm-accent-text)" }}>{row.col}</td>
+                        <td className="py-1.5 pr-3 font-mono opacity-60">{row.type}</td>
+                        <td className="py-1.5 pr-3">{row.req ? <span style={{ color: "var(--adm-danger-text)" }}>Yes</span> : "No"}</td>
+                        <td className="py-1.5">{row.desc}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <CopyButton text="Authorization: Bearer YOUR_SALES_WEBHOOK_SECRET" field="auth" />
+
+              {/* n8n expression example */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>
+                    n8n expression example
+                  </span>
+                  <CopyButton text={n8nColumnMapping} field="mapping" label="Copy Mapping" />
+                </div>
+                <pre className="overflow-x-auto rounded-md p-3 text-[10px] leading-relaxed" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}>
+                  {n8nColumnMapping}
+                </pre>
+                <p className="mt-1.5 text-[10px]" style={{ color: "var(--adm-text-placeholder)" }}>
+                  Replace <code className="font-mono">$json.*</code> expressions with your actual field names from the accounting software node
+                </p>
+              </div>
             </div>
-            <p className="mt-1 text-[10px]" style={{ color: "var(--adm-text-placeholder)" }}>
-              Set the same secret in both Vercel Vars and your n8n HTTP Request node header
-            </p>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* n8n Headers */}
-      <div
-        className="rounded-lg border p-4"
-        style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-xs font-semibold">n8n HTTP Request Headers</h3>
-          <CopyButton text={n8nHeaders} field="headers" label="Copy Headers" />
-        </div>
-        <pre
-          className="overflow-x-auto rounded-md p-3 text-[11px] leading-relaxed"
-          style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}
-        >
-          {n8nHeaders}
-        </pre>
-      </div>
-
-      {/* Payload Examples (collapsible) */}
+      {/* ── Secondary: Webhook Fallback ── */}
       <div
         className="rounded-lg border"
         style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}
       >
         <button
-          onClick={() => setPayloadOpen(!payloadOpen)}
+          onClick={() => setWebhookOpen(!webhookOpen)}
           className="flex w-full items-center justify-between px-4 py-3"
         >
-          <h3 className="text-xs font-semibold">Payload Examples</h3>
+          <div className="flex items-center gap-2">
+            <Webhook className="h-4 w-4" style={{ color: "var(--adm-text-muted)" }} />
+            <h3 className="text-xs font-semibold">Webhook Fallback</h3>
+            <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text-muted)" }}>
+              Alternative
+            </span>
+          </div>
           <ChevronDown
             className="h-4 w-4 transition-transform"
-            style={{
-              color: "var(--adm-text-muted)",
-              transform: payloadOpen ? "rotate(180deg)" : "rotate(0deg)",
-            }}
+            style={{ color: "var(--adm-text-muted)", transform: webhookOpen ? "rotate(180deg)" : "rotate(0deg)" }}
           />
         </button>
 
-        {payloadOpen && (
-          <div className="flex flex-col gap-4 border-t px-4 py-4" style={{ borderColor: "var(--adm-border)" }}>
-            {/* Single invoice */}
+        {webhookOpen && (
+          <div className="flex flex-col gap-3 border-t px-4 py-4" style={{ borderColor: "var(--adm-border)" }}>
+            <p className="text-[11px]" style={{ color: "var(--adm-text-muted)" }}>
+              Use this when a system can only call HTTP endpoints (no native Supabase support).
+              Requires <code className="font-mono">SALES_WEBHOOK_SECRET</code> in Vercel Vars.
+            </p>
+
+            {/* Endpoint */}
             <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>
-                  Single invoice
-                </span>
-                <CopyButton text={samplePayload} field="single" label="Copy Payload" />
+              <label className="mb-1 block text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>Endpoint</label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 truncate rounded-md px-3 py-2 text-xs" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}>
+                  POST {webhookUrl}
+                </code>
+                <CopyButton text={webhookUrl} field="webhookUrl" />
               </div>
-              <pre
-                className="overflow-x-auto rounded-md p-3 text-[10px] leading-relaxed"
-                style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}
-              >
-                {samplePayload}
-              </pre>
             </div>
 
-            {/* Batch */}
+            {/* Auth */}
             <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>
-                  Batch (multiple invoices)
-                </span>
-                <CopyButton text={batchPayload} field="batch" label="Copy Payload" />
+              <label className="mb-1 block text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>Header</label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded-md px-3 py-2 text-[11px]" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}>
+                  Authorization: Bearer {"$"}{"{"}SALES_WEBHOOK_SECRET{"}"}
+                </code>
+                <CopyButton text="Authorization: Bearer YOUR_SALES_WEBHOOK_SECRET" field="webhookAuth" />
               </div>
-              <pre
-                className="overflow-x-auto rounded-md p-3 text-[10px] leading-relaxed"
-                style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}
-              >
-                {batchPayload}
-              </pre>
             </div>
 
-            {/* Field reference */}
-            <div
-              className="rounded-md p-3 text-[11px] leading-relaxed"
-              style={{ backgroundColor: "var(--adm-bg)", border: "1px solid var(--adm-border)" }}
-            >
-              <h4 className="mb-2 font-semibold" style={{ color: "var(--adm-text)" }}>Field Reference</h4>
-              <div className="flex flex-col gap-1" style={{ color: "var(--adm-text-secondary)" }}>
-                <FieldRef name="amount" required desc="Invoice amount in smallest readable unit (e.g. 45000 = kr 45,000)" />
-                <FieldRef name="currency" required desc="ISO currency code: DKK, EUR, USD, etc." />
-                <FieldRef name="category_name" required desc="Product/service category for grouping" />
-                <FieldRef name="customer_name" desc="Client/customer name from the invoice" />
-                <FieldRef name="description" desc="Invoice line description" />
-                <FieldRef name="external_ref" desc="Invoice number (used for duplicate detection)" />
-                <FieldRef name="sold_at" desc="Sale date as ISO string. Defaults to now()" />
-                <FieldRef name="source" desc='null = untagged. Options: "online", "networking", "walk_in", "referral", "trade_show"' />
+            {/* Payload example */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>Payload (uses client_slug)</span>
+                <CopyButton text={webhookPayload} field="webhookPayload" label="Copy" />
               </div>
+              <pre className="overflow-x-auto rounded-md p-3 text-[10px] leading-relaxed" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}>
+                {webhookPayload}
+              </pre>
             </div>
           </div>
         )}
       </div>
 
-      {/* Source Tags Config */}
+      {/* ── Source Tags ── */}
       <div
         className="rounded-lg border"
         style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}
@@ -308,18 +361,15 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
           </div>
           <ChevronDown
             className="h-4 w-4 transition-transform"
-            style={{
-              color: "var(--adm-text-muted)",
-              transform: sourceTagsOpen ? "rotate(180deg)" : "rotate(0deg)",
-            }}
+            style={{ color: "var(--adm-text-muted)", transform: sourceTagsOpen ? "rotate(180deg)" : "rotate(0deg)" }}
           />
         </button>
 
         {sourceTagsOpen && (
           <div className="border-t px-4 py-4" style={{ borderColor: "var(--adm-border)" }}>
             <p className="mb-3 text-[11px]" style={{ color: "var(--adm-text-muted)" }}>
-              These are the tags {clientName} can use to categorise their sales in the app.
-              If your n8n AI node assigns a tag, it should match one of these values exactly.
+              n8n AI node should output one of these exact values for the <code className="font-mono">source</code> column.
+              Send <code className="font-mono">null</code> if unsure -- {clientName} tags it in the app.
             </p>
             <div className="flex flex-wrap gap-2">
               {[
@@ -344,7 +394,7 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
         )}
       </div>
 
-      {/* Sync Status */}
+      {/* ── Sync Status ── */}
       <div
         className="rounded-lg border p-4"
         style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}
@@ -364,7 +414,7 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
                 warn={syncInfo.untagged_count > 0}
               />
               <StatBox
-                label="Last Entry"
+                label="Last Sync"
                 value={syncInfo.last_entry_at
                   ? new Date(syncInfo.last_entry_at).toLocaleDateString("da-DK", { day: "numeric", month: "short" })
                   : "Never"
@@ -393,8 +443,7 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
               >
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--adm-accent-text)" }} />
                 <p className="text-[11px] leading-relaxed" style={{ color: "var(--adm-text-secondary)" }}>
-                  No sales entries yet. Set up your n8n workflow using the webhook details above,
-                  or the client can add sales manually from their Sales tab.
+                  No sales data yet. Set up your n8n Supabase node using the details above to start syncing invoices.
                 </p>
               </div>
             )}
@@ -422,17 +471,6 @@ function StatBox({ label, value, warn }: { label: string; value: string; warn?: 
         {value}
       </span>
       <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>{label}</span>
-    </div>
-  );
-}
-
-function FieldRef({ name, desc, required }: { name: string; desc: string; required?: boolean }) {
-  return (
-    <div className="flex gap-2">
-      <code className="shrink-0 font-mono text-[10px]" style={{ color: "var(--adm-accent-text)" }}>
-        {name}{required ? "*" : ""}
-      </code>
-      <span>{desc}</span>
     </div>
   );
 }
