@@ -1,0 +1,154 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 210 20% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 20% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 20% 10%;
+    --primary: 210 90% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 15% 94%;
+    --secondary-foreground: 210 20% 10%;
+    --muted: 210 15% 94%;
+    --muted-foreground: 210 10% 46%;
+    --accent: 210 15% 94%;
+    --accent-foreground: 210 20% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 210 15% 89%;
+    --input: 210 15% 89%;
+    --ring: 210 90% 50%;
+    --chart-1: 210 90% 50%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+    --nav-bg: 210 30% 14%;
+    --nav-foreground: 210 15% 70%;
+    --nav-active: 210 90% 50%;
+    --nav-active-foreground: 0 0% 100%;
+    --font-family: "Inter", sans-serif;
+    /* Client dynamic theming defaults */
+    --client-primary: #3b82f6;
+    --client-secondary: #3b82f6;
+    --client-accent: #f59e0b;
+    --client-bg: #ffffff;
+    --client-text: #0f172a;
+    --client-radius: 0.5rem;
+    --client-font-heading: "Inter", sans-serif;
+    --client-font-body: "Inter", sans-serif;
+    --client-primary-light: #3b82f610;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+/* Admin dashboard theme — Get Digitalised branding */
+.admin-light {
+  --adm-bg: #f7f8f8;
+  --adm-surface: #ffffff;
+  --adm-surface-2: #f0f1f1;
+  --adm-surface-3: #e8f9ef;
+  --adm-border: #dfe1e1;
+  --adm-border-hover: #c5c8c8;
+  --adm-text: #111111;
+  --adm-text-secondary: #525252;
+  --adm-text-muted: #737373;
+  --adm-text-placeholder: #a3a3a3;
+  --adm-accent: #00c853;
+  --adm-accent-text: #059033;
+  --adm-accent-bg: #e8f9ef;
+  --adm-accent-hover: #00a344;
+  --adm-accent-10: rgba(0,200,83,0.10);
+  --adm-accent-20: rgba(0,200,83,0.20);
+  --adm-accent-bg-30: rgba(232,249,239,0.5);
+  --adm-border-30: rgba(223,225,225,0.5);
+  --adm-border-50: rgba(223,225,225,0.7);
+  --adm-bg-50: rgba(247,248,248,0.7);
+  --adm-danger-bg: #fef2f2;
+  --adm-danger-text: #dc2626;
+  --adm-danger-text-60: rgba(220,38,38,0.6);
+  --adm-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.admin-dark {
+  --adm-bg: #0b0b0b;
+  --adm-surface: #141414;
+  --adm-surface-2: #1c1c1c;
+  --adm-surface-3: #1c1c1c;
+  --adm-border: #262626;
+  --adm-border-hover: #3a3a3a;
+  --adm-text: #f0f0f0;
+  --adm-text-secondary: #a3a3a3;
+  --adm-text-muted: #737373;
+  --adm-text-placeholder: #525252;
+  --adm-accent: #00e676;
+  --adm-accent-text: #00e676;
+  --adm-accent-bg: #0e2a18;
+  --adm-accent-hover: #33ff99;
+  --adm-accent-10: rgba(0,230,118,0.10);
+  --adm-accent-20: rgba(0,230,118,0.20);
+  --adm-accent-bg-30: rgba(14,42,24,0.5);
+  --adm-border-30: rgba(38,38,38,0.5);
+  --adm-border-50: rgba(38,38,38,0.7);
+  --adm-bg-50: rgba(11,11,11,0.7);
+  --adm-danger-bg: rgba(127,29,29,0.3);
+  --adm-danger-text: #f87171;
+  --adm-danger-text-60: rgba(248,113,113,0.6);
+  --adm-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-family), var(--font-inter), sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Shake animation for PIN error */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-4px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
