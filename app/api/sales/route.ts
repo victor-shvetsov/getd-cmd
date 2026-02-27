@@ -3,26 +3,25 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * GET /api/sales?clientId=xxx&month=2026-02
- * Returns sales entries + revenue goal for the given month
+ * Returns sales entries + revenue goal + aggregations for the given month
  */
 export async function GET(req: NextRequest) {
   const clientId = req.nextUrl.searchParams.get("clientId");
-  const month = req.nextUrl.searchParams.get("month"); // e.g. "2026-02"
+  const month = req.nextUrl.searchParams.get("month");
 
   if (!clientId) {
     return NextResponse.json({ error: "clientId required" }, { status: 400 });
   }
 
-  // Default to current month
   const now = new Date();
-  const targetMonth = month || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const targetMonth =
+    month || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [year, mon] = targetMonth.split("-").map(Number);
-  const startDate = new Date(year, mon - 1, 1).toISOString();
-  const endDate = new Date(year, mon, 1).toISOString();
+  const startDate = new Date(Date.UTC(year, mon - 1, 1)).toISOString();
+  const endDate = new Date(Date.UTC(year, mon, 1)).toISOString();
 
   const supabase = createAdminClient();
 
-  // Fetch sales entries for the month
   const { data: entries, error } = await supabase
     .from("sales_entries")
     .select("*")
@@ -35,7 +34,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Fetch the revenue goal from the sales tab data
   const { data: tabData } = await supabase
     .from("client_tabs")
     .select("data")
@@ -43,53 +41,84 @@ export async function GET(req: NextRequest) {
     .eq("tab_key", "sales")
     .single();
 
-  const revenueGoal = (tabData?.data as Record<string, unknown>)?.revenue_goal ?? 0;
-  const categories = ((tabData?.data as Record<string, unknown>)?.product_categories ?? []) as Array<{ id: string; name: string; sort_order: number }>;
+  const revenueGoal = Number(
+    (tabData?.data as Record<string, unknown>)?.revenue_goal ?? 0
+  );
+  const productCategories = (
+    (tabData?.data as Record<string, unknown>)?.product_categories ?? []
+  ) as Array<{ id: string; name: string; sort_order: number }>;
 
-  // Aggregate totals
-  const totalRevenue = (entries ?? []).reduce((sum, e) => sum + Number(e.amount), 0);
+  const rows = entries ?? [];
+  const totalRevenue = rows.reduce((s, r) => s + Number(r.amount), 0);
+  const untaggedCount = rows.filter((r) => !r.source).length;
 
-  // Aggregate by category
-  const byCategory: Record<string, { name: string; total: number; count: number }> = {};
-  for (const entry of entries ?? []) {
-    const catName = entry.category_name || "Other";
-    if (!byCategory[catName]) byCategory[catName] = { name: catName, total: 0, count: 0 };
-    byCategory[catName].total += Number(entry.amount);
-    byCategory[catName].count += 1;
+  // By category
+  const byCat: Record<string, { name: string; total: number; count: number }> = {};
+  for (const r of rows) {
+    const cat = r.category_name || "Other";
+    if (!byCat[cat]) byCat[cat] = { name: cat, total: 0, count: 0 };
+    byCat[cat].total += Number(r.amount);
+    byCat[cat].count += 1;
   }
 
-  // Aggregate by source
+  // By source
   const bySource: Record<string, number> = {};
-  for (const entry of entries ?? []) {
-    const src = entry.source || "manual";
-    bySource[src] = (bySource[src] || 0) + Number(entry.amount);
+  for (const r of rows) {
+    const src = r.source || "untagged";
+    bySource[src] = (bySource[src] || 0) + Number(r.amount);
   }
 
   return NextResponse.json({
     month: targetMonth,
-    revenue_goal: Number(revenueGoal),
+    revenue_goal: revenueGoal,
     total_revenue: totalRevenue,
-    categories,
-    by_category: Object.values(byCategory).sort((a, b) => b.total - a.total),
+    untagged_count: untaggedCount,
+    product_categories: productCategories,
+    by_category: Object.values(byCat).sort((a, b) => b.total - a.total),
     by_source: bySource,
-    entries: entries ?? [],
-    entry_count: (entries ?? []).length,
+    entries: rows,
+    entry_count: rows.length,
   });
 }
 
 /**
- * POST /api/sales -- add a manual sale entry
+ * PATCH /api/sales -- tag a sale entry with its source channel
+ * Body: { id: string, source: string }
+ */
+export async function PATCH(req: NextRequest) {
+  const body = await req.json();
+  const { id, source } = body;
+
+  if (!id || !source) {
+    return NextResponse.json({ error: "id and source required" }, { status: 400 });
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("sales_entries")
+    .update({ source, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+/**
+ * POST /api/sales -- manually add a sale entry (fallback)
+ * Body: { clientId, amount, categoryName?, customerName?, description?, note?, source?, currency?, soldAt? }
  */
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { clientId, categoryName, amount, currency, source, note, soldAt } = body;
+  const { clientId, amount, categoryName, customerName, description, note, source, currency, soldAt } = body;
 
   if (!clientId || !amount) {
     return NextResponse.json({ error: "clientId and amount required" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
-
   const { data, error } = await supabase
     .from("sales_entries")
     .insert({
@@ -98,6 +127,8 @@ export async function POST(req: NextRequest) {
       amount: Number(amount),
       currency: currency || "DKK",
       source: source || "manual",
+      customer_name: customerName || null,
+      description: description || null,
       note: note || null,
       sold_at: soldAt || new Date().toISOString(),
     })
