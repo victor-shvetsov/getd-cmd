@@ -64,8 +64,8 @@ function InfoRow({
   return (
     <div className="flex items-center gap-3 py-1.5">
       <div
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-        style={{ backgroundColor: `${iconColor}12` }}
+        className="flex h-7 w-7 shrink-0 items-center justify-center"
+        style={{ backgroundColor: `${iconColor}12`, borderRadius: "calc(var(--client-radius, 0.75rem) * 0.65)" }}
       >
         <Icon className="h-3.5 w-3.5" style={{ color: iconColor }} />
       </div>

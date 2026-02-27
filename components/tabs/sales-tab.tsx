@@ -15,6 +15,7 @@ import {
   Footprints,
   UserPlus,
   Check,
+  ExternalLink,
 } from "lucide-react";
 import { t } from "@/lib/i18n";
 
@@ -58,6 +59,13 @@ interface SalesTabProps {
   clientId: string;
   currency: string;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Radius helpers                                                     */
+/* ------------------------------------------------------------------ */
+
+const R = "var(--client-radius, 0.75rem)";
+const R_SM = "calc(var(--client-radius, 0.75rem) * 0.65)";
 
 /* ------------------------------------------------------------------ */
 /*  Source tag config (labels resolved at render time via i18n)         */
@@ -155,6 +163,15 @@ function getPaceBg(revenuePct: number, timePct: number): string {
   return "rgba(239,68,68,0.06)";
 }
 
+function getSupabaseTableUrl(): string | null {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return null;
+  // Supabase project URL format: https://<project-ref>.supabase.co
+  const match = base.match(/https:\/\/([^.]+)\.supabase\.co/);
+  if (!match) return null;
+  return `https://supabase.com/dashboard/project/${match[1]}/editor/sales_entries`;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Progress Ring                                                      */
 /* ------------------------------------------------------------------ */
@@ -223,8 +240,8 @@ function TagPicker({
 }) {
   return (
     <div
-      className="flex flex-wrap gap-1.5 rounded-xl p-2"
-      style={{ backgroundColor: "var(--surface-2, #f5f5f5)", border: "1px solid var(--border-1, #e5e7eb)" }}
+      className="flex flex-wrap gap-1.5 p-2"
+      style={{ backgroundColor: "var(--surface-2, #f5f5f5)", border: "1px solid var(--border-1, #e5e7eb)", borderRadius: R_SM }}
     >
       {SOURCE_TAG_KEYS.filter((t) => t.key !== "manual").map((tag) => {
         const Icon = tag.icon;
@@ -232,8 +249,8 @@ function TagPicker({
           <button
             key={tag.key}
             onClick={() => onSelect(tag.key)}
-            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all hover:scale-105 active:scale-95"
-            style={{ backgroundColor: `${tag.color}18`, color: tag.color }}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-all hover:scale-105 active:scale-95"
+            style={{ backgroundColor: `${tag.color}18`, color: tag.color, borderRadius: R_SM }}
           >
             <Icon className="h-3 w-3" />
             {s(tag.i18nKey, lang, translations, tag.key)}
@@ -242,7 +259,8 @@ function TagPicker({
       })}
       <button
         onClick={onClose}
-        className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs opacity-40 hover:opacity-70"
+        className="flex items-center gap-1 px-2 py-1.5 text-xs opacity-40 hover:opacity-70"
+        style={{ borderRadius: R_SM }}
       >
         <X className="h-3 w-3" />
       </button>
@@ -290,8 +308,9 @@ function SaleRow({
 
   return (
     <div
-      className="flex flex-col gap-2 rounded-xl p-3 transition-all duration-300"
+      className="flex flex-col gap-2 p-3 transition-all duration-300"
       style={{
+        borderRadius: R_SM,
         backgroundColor: justTagged
           ? "rgba(34,197,94,0.06)"
           : isUntagged
@@ -335,9 +354,10 @@ function SaleRow({
       ) : (
         <button
           onClick={() => setShowPicker(true)}
-          className="flex items-center gap-1.5 self-start rounded-lg px-2 py-1 text-xs font-medium transition-all hover:scale-105 active:scale-95"
-          style={
-            isUntagged
+          className="flex items-center gap-1.5 self-start px-2 py-1 text-xs font-medium transition-all hover:scale-105 active:scale-95"
+          style={{
+            borderRadius: R_SM,
+            ...(isUntagged
               ? {
                   backgroundColor: "var(--client-primary, #3b82f6)12",
                   color: "var(--client-primary, #3b82f6)",
@@ -346,8 +366,8 @@ function SaleRow({
               : {
                   backgroundColor: `${src?.color || "#6b7280"}12`,
                   color: src?.color || "#6b7280",
-                }
-          }
+                }),
+          }}
         >
           <Icon className="h-3 w-3" />
           {isUntagged ? s("tag_this_sale", lang, translations, "Tag this sale") : sourceLabel}
@@ -415,14 +435,14 @@ function AddSaleSheet({
     <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div
-        className="relative z-10 w-full max-w-lg animate-in slide-in-from-bottom rounded-t-2xl p-5 pb-8"
-        style={{ backgroundColor: "var(--surface-1, #fff)", color: "inherit" }}
+        className="relative z-10 w-full max-w-lg animate-in slide-in-from-bottom p-5 pb-8"
+        style={{ backgroundColor: "var(--surface-1, #fff)", color: "inherit", borderTopLeftRadius: R, borderTopRightRadius: R }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full opacity-20" style={{ backgroundColor: "currentColor" }} />
+        <div className="mx-auto mb-4 h-1 w-10 opacity-20" style={{ backgroundColor: "currentColor", borderRadius: 9999 }} />
         <div className="mb-5 flex items-center justify-between">
           <h3 className="text-base font-semibold">{s("add_a_sale", lang, translations, "Add a sale")}</h3>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:opacity-70"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="p-1.5 hover:opacity-70" style={{ borderRadius: R_SM }}><X className="h-5 w-5" /></button>
         </div>
         <div className="flex flex-col gap-4">
           <div>
@@ -431,8 +451,8 @@ function AddSaleSheet({
               type="number" inputMode="numeric" value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0" autoFocus
-              className="w-full rounded-xl border px-4 py-3 text-2xl font-bold tabular-nums outline-none focus:ring-2"
-              style={{ backgroundColor: "var(--surface-2, #eee)", borderColor: "var(--border-1, #ddd)", color: "inherit" }}
+              className="w-full border px-4 py-3 text-2xl font-bold tabular-nums outline-none focus:ring-2"
+              style={{ backgroundColor: "var(--surface-2, #eee)", borderColor: "var(--border-1, #ddd)", color: "inherit", borderRadius: R_SM }}
             />
           </div>
           <div>
@@ -441,8 +461,8 @@ function AddSaleSheet({
               type="text" value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="..."
-              className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2"
-              style={{ backgroundColor: "var(--surface-2, #eee)", borderColor: "var(--border-1, #ddd)", color: "inherit" }}
+              className="w-full border px-4 py-2.5 text-sm outline-none focus:ring-2"
+              style={{ backgroundColor: "var(--surface-2, #eee)", borderColor: "var(--border-1, #ddd)", color: "inherit", borderRadius: R_SM }}
             />
           </div>
           {categories.length > 0 && (
@@ -452,8 +472,9 @@ function AddSaleSheet({
                 {categories.map((cat) => (
                   <button
                     key={cat.id} onClick={() => setCategory(cat.name)}
-                    className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all"
+                    className="px-3 py-1.5 text-xs font-medium transition-all"
                     style={{
+                      borderRadius: R_SM,
                       backgroundColor: category === cat.name ? "var(--client-primary, #3b82f6)" : "var(--surface-2, #eee)",
                       color: category === cat.name ? "#fff" : "inherit",
                       opacity: category === cat.name ? 1 : 0.6,
@@ -462,8 +483,9 @@ function AddSaleSheet({
                 ))}
                 <button
                   onClick={() => setCategory(otherLabel)}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all"
+                  className="px-3 py-1.5 text-xs font-medium transition-all"
                   style={{
+                    borderRadius: R_SM,
                     backgroundColor: category === otherLabel ? "var(--client-primary, #3b82f6)" : "var(--surface-2, #eee)",
                     color: category === otherLabel ? "#fff" : "inherit",
                     opacity: category === otherLabel ? 1 : 0.6,
@@ -477,15 +499,15 @@ function AddSaleSheet({
             <input
               type="text" value={note} onChange={(e) => setNote(e.target.value)}
               placeholder={s("note_placeholder", lang, translations, "Trade show sale, walk-in...")}
-              className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2"
-              style={{ backgroundColor: "var(--surface-2, #eee)", borderColor: "var(--border-1, #ddd)", color: "inherit" }}
+              className="w-full border px-4 py-2.5 text-sm outline-none focus:ring-2"
+              style={{ backgroundColor: "var(--surface-2, #eee)", borderColor: "var(--border-1, #ddd)", color: "inherit", borderRadius: R_SM }}
             />
           </div>
           <button
             onClick={handleSubmit}
             disabled={!amount || Number(amount) <= 0 || saving}
-            className="mt-1 w-full rounded-xl py-3.5 text-sm font-bold text-white transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-30"
-            style={{ backgroundColor: "var(--client-primary, #3b82f6)" }}
+            className="mt-1 w-full py-3.5 text-sm font-bold text-white transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-30"
+            style={{ backgroundColor: "var(--client-primary, #3b82f6)", borderRadius: R_SM }}
           >
             {saving ? s("saving", lang, translations, "Saving...") : `${s("add_amount", lang, translations, "Add")} ${amount ? fmtCurrency(Number(amount), currency) : ""}`}
           </button>
@@ -582,6 +604,7 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
   const byCategory = data?.by_category ?? [];
   const bySource = data?.by_source ?? {};
   const categories = data?.product_categories ?? [];
+  const supabaseUrl = useMemo(() => getSupabaseTableUrl(), []);
 
   // Swipe
   const touchStartX = useRef(0);
@@ -595,7 +618,7 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
   if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-current border-t-transparent opacity-20" />
+        <div className="h-10 w-10 animate-spin border-2 border-current border-t-transparent opacity-20" style={{ borderRadius: 9999 }} />
       </div>
     );
   }
@@ -608,15 +631,15 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
     >
       {/* ---- HERO: Revenue Ring ---- */}
       <div
-        className="relative flex flex-col items-center gap-1 rounded-2xl px-4 pb-5 pt-4"
-        style={{ backgroundColor: "var(--surface-1)", transition: "background-color 0.3s" }}
+        className="relative flex flex-col items-center gap-1 px-4 pb-5 pt-4"
+        style={{ backgroundColor: "var(--surface-1)", borderRadius: R, transition: "background-color 0.3s" }}
       >
         {/* Month nav */}
         <div className="mb-2 flex w-full items-center justify-between">
           <button
             onClick={handlePrev}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:opacity-70"
-            style={{ backgroundColor: "var(--surface-2)" }}
+            className="flex h-8 w-8 items-center justify-center transition-colors hover:opacity-70"
+            style={{ backgroundColor: "var(--surface-2)", borderRadius: R_SM }}
             aria-label="Previous month"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -627,8 +650,8 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
           <button
             onClick={handleNext}
             disabled={!canGoNext}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:opacity-70 disabled:opacity-15"
-            style={{ backgroundColor: "var(--surface-2)" }}
+            className="flex h-8 w-8 items-center justify-center transition-colors hover:opacity-70 disabled:opacity-15"
+            style={{ backgroundColor: "var(--surface-2)", borderRadius: R_SM }}
             aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4" />
@@ -637,8 +660,8 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
 
         {/* Ring */}
         <div
-          className="flex items-center justify-center rounded-full p-2 transition-colors duration-700"
-          style={{ backgroundColor: paceBg }}
+          className="flex items-center justify-center p-2 transition-colors duration-700"
+          style={{ backgroundColor: paceBg, borderRadius: 9999 }}
         >
           <ProgressRing pct={progressPct} color={paceColor} size={190} stroke={12}>
             <span className="text-center text-2xl font-bold tabular-nums leading-tight" style={{ maxWidth: 130 }}>
@@ -669,10 +692,10 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
               <span>{s("day", lang, tx, "Day")} {daysInfo.dayOfMonth}</span>
               <span>{daysInfo.daysInMonth} {s("days", lang, tx, "days")}</span>
             </div>
-            <div className="mt-0.5 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: "var(--surface-3)" }}>
+            <div className="mt-0.5 h-1.5 w-full overflow-hidden" style={{ backgroundColor: "var(--surface-3)", borderRadius: 9999 }}>
               <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${daysInfo.pct}%`, backgroundColor: paceColor, opacity: 0.35 }}
+                className="h-full transition-all duration-700"
+                style={{ width: `${daysInfo.pct}%`, backgroundColor: paceColor, opacity: 0.35, borderRadius: 9999 }}
               />
             </div>
           </div>
@@ -682,8 +705,9 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
       {/* ---- UNTAGGED BANNER ---- */}
       {(data?.untagged_count ?? 0) > 0 && (
         <div
-          className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5"
+          className="flex items-center gap-2.5 px-3.5 py-2.5"
           style={{
+            borderRadius: R_SM,
             backgroundColor: "var(--client-primary, #3b82f6)08",
             border: "1px solid var(--client-primary, #3b82f6)18",
           }}
@@ -712,7 +736,7 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
 
       {/* ---- CATEGORY BREAKDOWN ---- */}
       {byCategory.length > 0 && (
-        <div className="flex flex-col gap-3 rounded-2xl p-4" style={{ backgroundColor: "var(--surface-1)" }}>
+        <div className="flex flex-col gap-3 p-4" style={{ backgroundColor: "var(--surface-1)", borderRadius: R }}>
           <h3 className="text-xs font-semibold uppercase tracking-wider opacity-40">
             {s("whats_selling", lang, tx, "What\u2019s selling")}
           </h3>
@@ -728,10 +752,10 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
                       <span className="text-[10px] opacity-30">{cat.count}x</span>
                     </div>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: "var(--surface-3, #eee)" }}>
+                  <div className="h-1.5 overflow-hidden" style={{ backgroundColor: "var(--surface-3, #eee)", borderRadius: 9999 }}>
                     <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${catPct}%`, backgroundColor: "var(--client-primary, #3b82f6)", opacity: 0.55 }}
+                      className="h-full transition-all duration-500"
+                      style={{ width: `${catPct}%`, backgroundColor: "var(--client-primary, #3b82f6)", opacity: 0.55, borderRadius: 9999 }}
                     />
                   </div>
                 </div>
@@ -757,8 +781,8 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
                 return (
                   <div
                     key={src}
-                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
-                    style={{ backgroundColor: `${cfg?.color || "#6b7280"}12` }}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5"
+                    style={{ backgroundColor: `${cfg?.color || "#6b7280"}12`, borderRadius: R_SM }}
                   >
                     <SrcIcon className="h-3 w-3" style={{ color: cfg?.color || "#6b7280" }} />
                     <span className="text-xs font-medium" style={{ color: cfg?.color || "#6b7280" }}>
@@ -786,6 +810,20 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
         </div>
       )}
 
+      {/* ---- SUPABASE SHORTCUT ---- */}
+      {supabaseUrl && (
+        <a
+          href={supabaseUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] font-medium opacity-30 transition-opacity hover:opacity-60"
+          style={{ borderRadius: R_SM, border: "1px dashed var(--surface-3, #ddd)" }}
+        >
+          <ExternalLink className="h-3 w-3" />
+          <span>Open sales_entries in Supabase</span>
+        </a>
+      )}
+
       {/* ---- EMPTY STATE ---- */}
       {data && data.entry_count === 0 && (
         <div className="flex flex-col items-center gap-2 py-10 opacity-30">
@@ -798,8 +836,8 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
       {isCurrent && (
         <button
           onClick={() => setShowAddSale(true)}
-          className="fixed bottom-24 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition-all hover:scale-110 active:scale-95"
-          style={{ backgroundColor: "var(--client-primary, #3b82f6)" }}
+          className="fixed bottom-24 right-5 z-50 flex h-12 w-12 items-center justify-center text-white shadow-lg transition-all hover:scale-110 active:scale-95"
+          style={{ backgroundColor: "var(--client-primary, #3b82f6)", borderRadius: 9999 }}
           aria-label={s("add_a_sale", lang, tx, "Add a sale")}
         >
           <Plus className="h-5 w-5" />

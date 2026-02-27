@@ -132,8 +132,8 @@ function MiniStat({
 }) {
   return (
     <div
-      className="flex flex-col items-center gap-0.5 overflow-hidden rounded-xl px-1 py-2"
-      style={{ backgroundColor: "var(--surface-1)" }}
+      className="flex flex-col items-center gap-0.5 overflow-hidden px-1 py-2"
+      style={{ backgroundColor: "var(--surface-1)", borderRadius: "calc(var(--client-radius, 0.75rem) * 0.65)" }}
     >
       <Icon className="h-3 w-3 shrink-0" style={{ opacity: 0.35 }} />
       <span className="max-w-full truncate text-center text-[12px] font-bold tabular-nums leading-tight">{value}</span>
@@ -175,9 +175,10 @@ function ServiceCard({
       >
         {/* Volume share indicator */}
         <div
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center"
           style={{
             backgroundColor: "var(--client-primary, #3b82f6)12",
+            borderRadius: "calc(var(--client-radius, 0.75rem) * 0.65)",
           }}
         >
           <span
