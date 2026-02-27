@@ -32,6 +32,9 @@ interface AutomationsTabProps {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+const R = "var(--client-radius, 0.75rem)";
+const R_SM = "calc(var(--client-radius, 0.75rem) * 0.65)";
+
 // Map automation keys to icons for the 3 core automations
 const KEY_ICONS: Record<string, typeof Zap> = {
   lead_reply: Mail,
@@ -56,18 +59,20 @@ function Toggle({
     <button
       onClick={onToggle}
       disabled={loading}
-      className="relative h-7 w-12 flex-shrink-0 rounded-full transition-colors duration-200"
+      className="relative flex h-7 w-12 flex-shrink-0 items-center transition-colors duration-200"
       style={{
         backgroundColor: enabled ? "var(--client-primary, #3b82f6)" : "var(--surface-3, #ccc)",
         opacity: loading ? 0.5 : 1,
+        borderRadius: 9999,
       }}
       role="switch"
       aria-checked={enabled}
     >
       <span
-        className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200"
+        className="block h-[22px] w-[22px] bg-white shadow transition-transform duration-200"
         style={{
-          transform: enabled ? "translateX(22px)" : "translateX(2px)",
+          borderRadius: 9999,
+          transform: enabled ? "translateX(23px)" : "translateX(3px)",
         }}
       />
     </button>
@@ -106,14 +111,15 @@ function AutomationCard({
 
   return (
     <div
-      className="flex flex-col gap-3 rounded-2xl p-4"
-      style={{ backgroundColor: "var(--surface-1)" }}
+      className="flex flex-col gap-3 p-4"
+      style={{ backgroundColor: "var(--surface-1)", borderRadius: R }}
     >
       {/* Header row: icon + name + toggle */}
       <div className="flex items-start gap-3">
         <div
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-colors"
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center transition-colors"
           style={{
+            borderRadius: R_SM,
             backgroundColor: optimisticEnabled
               ? "var(--client-primary, #3b82f6)"
               : "var(--surface-2)",
@@ -134,8 +140,8 @@ function AutomationCard({
       {/* Counter */}
       {automation.counter_value > 0 && (
         <div
-          className="flex items-center gap-2 rounded-xl px-3 py-2"
-          style={{ backgroundColor: "var(--surface-2)" }}
+          className="flex items-center gap-2 px-3 py-2"
+          style={{ backgroundColor: "var(--surface-2)", borderRadius: R_SM }}
         >
           <span
             className="text-lg font-bold tabular-nums"
@@ -150,8 +156,9 @@ function AutomationCard({
       {/* Status indicator */}
       <div className="flex items-center gap-1.5">
         <div
-          className="h-1.5 w-1.5 rounded-full"
+          className="h-1.5 w-1.5"
           style={{
+            borderRadius: 9999,
             backgroundColor: optimisticEnabled ? "#16a34a" : "var(--surface-3)",
           }}
         />
@@ -191,7 +198,7 @@ export function AutomationsTab({ clientId }: AutomationsTabProps) {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 px-4 py-20">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-current border-t-transparent opacity-20" />
+        <div className="h-10 w-10 animate-spin border-2 border-current border-t-transparent opacity-20" style={{ borderRadius: 9999 }} />
       </div>
     );
   }
@@ -200,8 +207,8 @@ export function AutomationsTab({ clientId }: AutomationsTabProps) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 px-4 py-20 text-center">
         <div
-          className="flex h-16 w-16 items-center justify-center rounded-2xl"
-          style={{ backgroundColor: "var(--surface-2)" }}
+          className="flex h-16 w-16 items-center justify-center"
+          style={{ backgroundColor: "var(--surface-2)", borderRadius: R }}
         >
           <Zap className="h-8 w-8 opacity-30" />
         </div>
@@ -221,12 +228,12 @@ export function AutomationsTab({ clientId }: AutomationsTabProps) {
     <div className="flex flex-col gap-4 px-4 py-5">
       {/* Summary bar */}
       <div
-        className="flex items-center gap-4 rounded-2xl p-4"
-        style={{ backgroundColor: "var(--surface-1)" }}
+        className="flex items-center gap-4 p-4"
+        style={{ backgroundColor: "var(--surface-1)", borderRadius: R }}
       >
         <div
-          className="flex h-10 w-10 items-center justify-center rounded-xl"
-          style={{ backgroundColor: "var(--client-primary, #3b82f6)" }}
+          className="flex h-10 w-10 items-center justify-center"
+          style={{ backgroundColor: "var(--client-primary, #3b82f6)", borderRadius: R_SM }}
         >
           <Zap className="h-5 w-5 text-white" />
         </div>
