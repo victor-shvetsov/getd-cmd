@@ -53,5 +53,17 @@ export async function parseLeadEmail(
   // Strip markdown code fences if Claude wraps in ```json ... ```
   const json = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
 
-  return JSON.parse(json) as ParsedLead;
+  let parsed: ParsedLead;
+  try {
+    parsed = JSON.parse(json) as ParsedLead;
+  } catch {
+    throw new Error(`Email parser returned invalid JSON. Raw response: ${text.slice(0, 200)}`);
+  }
+
+  // Ensure required field is present
+  if (!parsed.from_email) {
+    throw new Error(`Email parser could not extract sender email. Raw response: ${text.slice(0, 200)}`);
+  }
+
+  return parsed;
 }

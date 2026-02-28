@@ -16,6 +16,7 @@ export function MapPageClient() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const { theme, toggle } = useAdminTheme();
 
   useEffect(() => {
@@ -95,7 +96,7 @@ export function MapPageClient() {
           <ProjectMapView
             theme={theme}
             selectedId={selectedId}
-            onNodeSelect={setSelectedId}
+            onNodeSelect={(id) => { setSelectedId(id); setSelectedSubId(null); }}
           />
         </div>
 
@@ -112,8 +113,10 @@ export function MapPageClient() {
           >
             <NodeDetailPanel
               data={selectedData}
-              onClose={() => setSelectedId(null)}
+              onClose={() => { setSelectedId(null); setSelectedSubId(null); }}
               theme={theme}
+              selectedSubId={selectedSubId}
+              onSubNodeSelect={setSelectedSubId}
             />
           </div>
         )}

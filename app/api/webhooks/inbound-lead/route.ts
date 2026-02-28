@@ -10,7 +10,10 @@ const automation = new LeadReplyAutomation();
  * POST /api/webhooks/inbound-lead
  *
  * Receives inbound email webhooks from Resend.
- * Each client has a dedicated address: [slug]@leads.getd.dk
+ * Each client has a dedicated address: [slug]@[RESEND_INBOUND_DOMAIN]
+ * e.g. casper@olkochiex.resend.app (Resend subdomain) or casper@leads.getd.dk (custom domain)
+ *
+ * Configure RESEND_INBOUND_DOMAIN in Vercel env vars and Resend inbound routing settings.
  *
  * Flow:
  *   1. Extract client slug from the "to" address

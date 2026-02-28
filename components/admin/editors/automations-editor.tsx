@@ -652,7 +652,8 @@ function LeadReplyConfigPanel({
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const inboundAddress = `${clientSlug}@olkochiex.resend.app`;
+  const inboundDomain = process.env.NEXT_PUBLIC_RESEND_INBOUND_DOMAIN ?? "olkochiex.resend.app";
+  const inboundAddress = `${clientSlug}@${inboundDomain}`;
 
   async function handleSave() {
     setBusy(true);

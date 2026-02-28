@@ -103,7 +103,9 @@ graph TD
 - Client Editor (`components/admin/client-editor.tsx`)
 - Knowledge Bank editor (`components/admin/editors/knowledge-editor.tsx`)
 - Branding editor (`components/admin/editors/branding-editor.tsx`)
-- Health Check (`components/admin/health-check.tsx`)
+- Health Check (`components/admin/health-check-panel.tsx`) — 20+ diagnostic checks + AI deep review (A–F score)
+- North Star / Project Objective (`components/admin/editors/general-editor.tsx`) — per-client AI context layer fed into all automations via `getClientAIContext()`
+- Project Map (`components/admin/project-map-view.tsx`) — this visual wiring diagram
 
 ### Target state
 - Multi-user access: Victor (full) + team members (scoped)
@@ -128,8 +130,8 @@ graph TD
 
 **Status:** `in-progress`
 **Description:** AI-powered automations running in TypeScript on Vercel. WAT pattern: Workflow + Agent + Tools.
-**What works:** Architecture scaffolded, base interface defined, registry pattern in place.
-**What's missing:** Lead Reply and the other two automations need to be production-tested end-to-end.
+**What works:** Full Lead Reply pipeline (parse → generate → draft/send), approval queue DB + UI, admin config panel, inbound Resend webhook. DB schema fully applied.
+**What's missing:** Social Poster and Review Collector need production testing. Voice samples not yet linked from Knowledge Hub into automation config.
 
 ### Sub-nodes (each is its own Level 2 diagram)
 - Lead Reply (`lib/automations/lead-reply/`)
@@ -156,9 +158,12 @@ graph TD
 
 ### Changelog
 - n8n completely dropped, replaced with TypeScript WAT pattern
-- `automation_runs` table designed (SQL ready, not yet applied)
-- Approval mode scaffolded: `require_approval` config flag, `pending_approval` status
-- Draft notification email (`lib/email.ts`) added — notifies `config.notify_email` when draft ready
+- `automation_runs` table applied to prod — includes `draft_content`, `payload`, all approval statuses
+- Approval mode fully wired: `require_approval` toggle → draft stored → client approves in Automations tab
+- Draft notification email (`lib/email.ts`) — notifies `config.notify_email` when draft ready
+- Lead Reply workflow hardened: JSON parse error handling in `parse-email.ts`, language detection rule added to `workflow.ts`
+- Inbound email domain made configurable via `NEXT_PUBLIC_RESEND_INBOUND_DOMAIN` env var
+- `003_automation_runs.sql` updated to reflect actual applied DB schema
 
 ---
 
@@ -170,9 +175,12 @@ graph TD
 **What's missing:** Linking voice samples from Knowledge Hub directly into automation config UI.
 
 ### Sub-nodes
-- Entry management (create / edit / delete raw content)
-- Extraction pipeline (`app/api/admin/clients/[id]/knowledge/extract/route.ts`)
-- Auto-fill (`app/api/admin/clients/[id]/knowledge/autofill/route.ts`)
+- Entry management / knowledge-editor (create / edit / delete raw content)
+- Extraction pipeline (`app/api/admin/clients/[id]/knowledge/extract/route.ts`) — AI parses free-text → structured JSON
+- Auto-fill (`app/api/admin/clients/[id]/knowledge/autofill/route.ts`) — fills tab fields from extracted facts
+- Gap analysis (`app/api/admin/clients/[id]/knowledge/gaps/route.ts`) — surfaces missing key facts
+- AI Briefs (`app/api/admin/clients/[id]/knowledge/briefs/route.ts`) — generates SEO briefs from KW research + Knowledge Hub facts
+- `getClientAIContext()` (`lib/ai-config.ts`) — single function feeding all AI features with client context
 
 ### Target state
 - Voice samples in Knowledge Hub automatically populate automation `voice_samples` config

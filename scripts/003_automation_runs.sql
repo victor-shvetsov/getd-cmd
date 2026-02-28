@@ -1,8 +1,9 @@
--- Migration: add automation_runs table
+-- Migration: add automation_runs table + update automations table
 -- Run this in the Supabase SQL editor.
 --
--- Also drops the webhook_url column from automations (no longer used
--- after removing n8n integration).
+-- NOTE: This file reflects the ACTUAL current DB state (already applied to prod).
+-- The original migration was applied and then extended in-place.
+-- This is the authoritative version to use for fresh setup.
 
 -- ── 1. Drop webhook_url from automations (no longer used) ──────────────
 ALTER TABLE public.automations
@@ -14,10 +15,20 @@ CREATE TABLE IF NOT EXISTS public.automation_runs (
   automation_id   UUID NOT NULL REFERENCES public.automations(id) ON DELETE CASCADE,
   client_id       UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
   status          TEXT NOT NULL DEFAULT 'pending'
-                    CHECK (status IN ('pending', 'running', 'success', 'error')),
+                    CHECK (status IN (
+                      'pending',
+                      'running',
+                      'success',
+                      'error',
+                      'pending_approval',   -- draft waiting for client review
+                      'approved',           -- client approved and message was sent
+                      'discarded'           -- client discarded the draft
+                    )),
   input_summary   TEXT,          -- short description of what triggered this run
   output_summary  TEXT,          -- short description of what was done
   error           TEXT,          -- error message if status = 'error'
+  draft_content   TEXT,          -- generated content when status = 'pending_approval'
+  payload         JSONB,         -- original trigger payload (stored for approve endpoint)
   ran_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -27,6 +38,11 @@ CREATE INDEX IF NOT EXISTS automation_runs_client_id_idx
 
 CREATE INDEX IF NOT EXISTS automation_runs_automation_id_idx
   ON public.automation_runs (automation_id, ran_at DESC);
+
+-- Index for fast pending_approval lookups (approval queue)
+CREATE INDEX IF NOT EXISTS automation_runs_pending_idx
+  ON public.automation_runs (client_id, status)
+  WHERE status = 'pending_approval';
 
 -- ── 3. RPC: atomic counter increment ──────────────────────────────────
 -- Called by the trigger route after a successful automation run.
