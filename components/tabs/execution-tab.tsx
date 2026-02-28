@@ -155,8 +155,8 @@ function ProgressHero({
         {/* Next milestone callout */}
         {nextStep && (
           <div
-            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5"
-            style={{ backgroundColor: "var(--client-primary, #3b82f6)08" }}
+            className="flex items-center gap-2.5 px-3 py-2.5"
+            style={{ backgroundColor: "var(--client-primary, #3b82f6)08", borderRadius: "calc(var(--client-radius, 0.75rem) * 0.8)" }}
           >
             <ArrowRight className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--client-primary, #3b82f6)" }} />
             <span className="text-[11.5px] font-medium opacity-60">
@@ -226,7 +226,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[12px] font-bold transition-all"
+      className="flex flex-1 items-center justify-center gap-1.5 py-2 text-[12px] font-bold transition-all"
       style={{
         backgroundColor: active ? "var(--surface-1)" : "transparent",
         color: active
@@ -234,6 +234,7 @@ function TabButton({
           : "var(--client-text, #1a2536)",
         opacity: active ? 1 : 0.4,
         boxShadow: active ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
+        borderRadius: "calc(var(--client-radius, 0.75rem) * 0.65)",
       }}
     >
       {accent && <TrendingUp className="h-3 w-3" />}
@@ -341,10 +342,11 @@ function ActiveStepCard({
         <div className="flex flex-wrap items-center gap-2 pl-9">
           {priced && (
             <span
-              className="rounded-lg px-2.5 py-1 text-[12px] font-bold tabular-nums"
+              className="px-2.5 py-1 text-[12px] font-bold tabular-nums"
               style={{
                 backgroundColor: canPay ? "var(--client-primary, #3b82f6)08" : "var(--surface-3)",
                 color: canPay ? "var(--client-primary, #3b82f6)" : "inherit",
+                borderRadius: "calc(var(--client-radius, 0.75rem) * 0.65)",
               }}
             >
               {fmtCurrency(safeStr(item.price), safeStr(item.currency) || "DKK")}
@@ -357,13 +359,13 @@ function ActiveStepCard({
             </span>
           )}
           {deadlineStatus === "at_risk" && (
-            <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "#f59e0b15", color: "#f59e0b" }}>
-              at risk
+            <span className="px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "#f59e0b15", color: "#f59e0b", borderRadius: "calc(var(--client-radius, 0.75rem) * 0.4)" }}>
+              {t("execution.at_risk", lang, tr)}
             </span>
           )}
           {deadlineStatus === "overdue" && (
-            <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "#ef444415", color: "#ef4444" }}>
-              overdue
+            <span className="px-1.5 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "#ef444415", color: "#ef4444", borderRadius: "calc(var(--client-radius, 0.75rem) * 0.4)" }}>
+              {t("execution.overdue", lang, tr)}
             </span>
           )}
           {priority === "critical" && <AlertTriangle className="h-3 w-3" style={{ color: "#ef4444" }} />}
@@ -382,8 +384,8 @@ function ActiveStepCard({
         {priced && canPay && (
           <button
             onClick={() => onPay(globalIdx)}
-            className="mt-1 flex items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-bold text-white transition-all hover:brightness-110 active:scale-[0.98]"
-            style={{ backgroundColor: "var(--client-primary, #3b82f6)" }}
+            className="mt-1 flex items-center justify-center gap-2 py-3 text-[13px] font-bold text-white transition-all hover:brightness-110 active:scale-[0.98]"
+            style={{ backgroundColor: "var(--client-primary, #3b82f6)", borderRadius: "var(--client-radius, 0.75rem)" }}
           >
             <CreditCard className="h-4 w-4" />
             {t("execution.start_step", lang, tr)}
@@ -402,12 +404,12 @@ function ActiveStepCard({
         {isPaid(item) && (item.invoice_url || item.invoice_pdf) && (
           <div className="flex items-center gap-2 pl-9">
             {item.invoice_pdf && (
-              <a href={item.invoice_pdf} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-opacity active:opacity-70" style={{ backgroundColor: "var(--surface-3)" }}>
+              <a href={item.invoice_pdf} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold transition-opacity active:opacity-70" style={{ backgroundColor: "var(--surface-3)", borderRadius: "calc(var(--client-radius, 0.75rem) * 0.65)" }}>
                 <Download className="h-3 w-3 opacity-50" /> {t("execution.download_invoice", lang, tr)}
               </a>
             )}
             {item.invoice_url && (
-              <a href={item.invoice_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-opacity active:opacity-70" style={{ backgroundColor: "var(--surface-3)" }}>
+              <a href={item.invoice_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold transition-opacity active:opacity-70" style={{ backgroundColor: "var(--surface-3)", borderRadius: "calc(var(--client-radius, 0.75rem) * 0.65)" }}>
                 <ExternalLink className="h-3 w-3 opacity-50" /> {t("execution.view_invoice", lang, tr)}
               </a>
             )}

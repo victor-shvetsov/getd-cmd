@@ -50,7 +50,7 @@ export function DemandTab({ data, lang, translations }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-[11px] font-bold uppercase tracking-wider opacity-45">
-          {t("demand.market_opportunity", lang, translations) || "Your Market"}
+          {t("demand.market_opportunity", lang, translations)}
         </h2>
         {ppcSheetLink && (
           <a
@@ -60,7 +60,7 @@ export function DemandTab({ data, lang, translations }: Props) {
             className="flex items-center gap-1 text-[11px] font-medium hover:underline"
             style={{ color: "var(--client-primary, #3b82f6)" }}
           >
-            {t("demand.full_research", lang, translations) || "Full Research"}
+            {t("demand.full_research", lang, translations)}
             <ExternalLink className="h-3 w-3" />
           </a>
         )}
@@ -258,6 +258,7 @@ function ServiceCard({
                     backgroundColor: "var(--client-primary, #3b82f6)0a",
                     color: "var(--client-primary, #3b82f6)",
                     opacity: 0.75,
+                    borderRadius: "calc(var(--client-radius, 0.75rem) * 0.4)",
                   }}
                 >
                   {ag}

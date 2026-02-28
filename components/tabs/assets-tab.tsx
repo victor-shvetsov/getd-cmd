@@ -60,10 +60,10 @@ export function AssetsTab({ data, lang, translations }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-[11px] font-bold uppercase tracking-wider opacity-45">
-          {t("assets.your_files", lang, translations) || "Your Files"}
+          {t("assets.your_files", lang, translations)}
         </h2>
         <span className="text-[11px] font-medium opacity-30">
-          {allFiles.length} {allFiles.length === 1 ? "file" : "files"}
+          {allFiles.length} {allFiles.length === 1 ? t("assets.file_singular", lang, translations) : t("assets.files_plural", lang, translations)}
         </span>
       </div>
 
