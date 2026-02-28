@@ -113,13 +113,19 @@
   * {
     @apply border-border;
   }
-  html {
-    scrollbar-gutter: stable;
-  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-family), var(--font-inter), sans-serif;
   }
+}
+
+/* Hide scrollbar but keep scrolling */
+html {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar {
+  display: none;
 }
 
 @layer utilities {
