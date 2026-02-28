@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import useSWR from "swr";
+import { t } from "@/lib/i18n";
 import { Zap, Mail, MessageCircle, Star, Bot } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -86,9 +87,13 @@ function Toggle({
 function AutomationCard({
   automation,
   onToggle,
+  lang,
+  tr,
 }: {
   automation: Automation;
   onToggle: (id: string, enabled: boolean) => Promise<void>;
+  lang: string;
+  tr: Record<string, Record<string, Record<string, string>>>;
 }) {
   const [loading, setLoading] = useState(false);
   const [optimisticEnabled, setOptimisticEnabled] = useState(automation.is_enabled);
@@ -149,7 +154,7 @@ function AutomationCard({
           >
             {automation.counter_value}
           </span>
-          <span className="text-xs opacity-40">{automation.counter_label} this month</span>
+          <span className="text-xs opacity-40">{automation.counter_label} {t("automations.this_month", lang, tr)}</span>
         </div>
       )}
 
@@ -163,7 +168,7 @@ function AutomationCard({
           }}
         />
         <span className="text-[10px] font-medium" style={{ opacity: optimisticEnabled ? 0.6 : 0.3 }}>
-          {optimisticEnabled ? "Running" : "Paused"}
+          {optimisticEnabled ? t("automations.running", lang, tr) : t("automations.paused", lang, tr)}
         </span>
       </div>
     </div>
@@ -174,7 +179,7 @@ function AutomationCard({
 /*  Main Automations Tab                                                */
 /* ------------------------------------------------------------------ */
 
-export function AutomationsTab({ clientId }: AutomationsTabProps) {
+export function AutomationsTab({ lang, translations: tr, clientId }: AutomationsTabProps) {
   const { data, isLoading, mutate } = useSWR<{ automations: Automation[] }>(
     `/api/automations?clientId=${clientId}`,
     fetcher,
@@ -213,8 +218,8 @@ export function AutomationsTab({ clientId }: AutomationsTabProps) {
           <Zap className="h-8 w-8 opacity-30" />
         </div>
         <div>
-          <p className="text-sm font-medium opacity-60">No automations set up yet</p>
-          <p className="mt-0.5 text-xs opacity-30">Your automated workflows will appear here</p>
+          <p className="text-sm font-medium opacity-60">{t("automations.no_automations", lang, tr)}</p>
+          <p className="mt-0.5 text-xs opacity-30">{t("automations.no_automations_sub", lang, tr)}</p>
         </div>
       </div>
     );
@@ -239,10 +244,10 @@ export function AutomationsTab({ clientId }: AutomationsTabProps) {
         </div>
         <div className="flex-1">
           <p className="text-sm font-medium">
-            {activeCount} of {automations.length} active
+            {activeCount} / {automations.length} {t("automations.x_of_y_active", lang, tr)}
           </p>
           {totalActions > 0 && (
-            <p className="text-xs opacity-40">{totalActions} automated actions this month</p>
+            <p className="text-xs opacity-40">{totalActions} {t("automations.automated_actions", lang, tr)}</p>
           )}
         </div>
       </div>
@@ -250,7 +255,7 @@ export function AutomationsTab({ clientId }: AutomationsTabProps) {
       {/* Automation cards */}
       <div className="flex flex-col gap-3">
         {automations.map((automation) => (
-          <AutomationCard key={automation.id} automation={automation} onToggle={handleToggle} />
+          <AutomationCard key={automation.id} automation={automation} onToggle={handleToggle} lang={lang} tr={tr} />
         ))}
       </div>
     </div>

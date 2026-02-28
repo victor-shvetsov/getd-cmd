@@ -4,7 +4,31 @@
       "common": {
         "no_data": "No data available yet",
         "pin_title": "Enter PIN",
-        "pin_subtitle": "Please enter your access code"
+        "pin_subtitle": "Please enter your access code",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "days_ago": "days ago",
+        "last_week": "Last week",
+        "weeks_ago": "weeks ago"
+      },
+      "activity": {
+        "total_actions": "things we did for you",
+        "nothing_yet": "Nothing to show yet",
+        "nothing_yet_sub": "Activity updates will appear here",
+        "category_seo": "SEO",
+        "category_ads": "Ads",
+        "category_website": "Website",
+        "category_automation": "Automation",
+        "category_general": "General"
+      },
+      "automations": {
+        "x_of_y_active": "active",
+        "automated_actions": "automated actions this month",
+        "this_month": "this month",
+        "running": "Running",
+        "paused": "Paused",
+        "no_automations": "No automations set up yet",
+        "no_automations_sub": "Your automated workflows will appear here"
       },
       "brief": {
         "service_provider": "Service Provider",
@@ -38,7 +62,11 @@
         "services": "Services",
         "est_cpc": "Est. CPC",
         "by_service": "Demand by Service",
-        "keywords": "keywords"
+        "keywords": "keywords",
+        "people_searching": "People searching for your products every month",
+        "your_products": "Your products",
+        "search_terms": "Search terms",
+        "per_month_short": "/mo"
       },
       "website": {
         "website_architecture": "Website Architecture",
@@ -52,7 +80,9 @@
         "search_volume": "Search Volume",
         "cluster": "Cluster",
         "full_url": "URL",
-        "open_link": "View Page"
+        "open_link": "View Page",
+        "pages_count": "pages",
+        "more_keywords": "more"
       },
       "assets": {
         "brand_kit": "Brand Kit",
@@ -61,7 +91,10 @@
         "logos": "Logo Files",
         "colors": "Brand Colors",
         "fonts": "Brand Fonts",
-        "guidelines": "Brand Guidelines"
+        "guidelines": "Brand Guidelines",
+        "your_files": "Your Files",
+        "file_singular": "file",
+        "files_plural": "files"
       },
       "execution": {
         "project_roadmap": "Project Roadmap",
@@ -90,7 +123,9 @@
         "all_complete": "All milestones complete!",
         "your_project": "Your Project",
         "growth_services": "Growth Services",
-        "start_step": "Start This Step"
+        "start_step": "Start This Step",
+        "at_risk": "at risk",
+        "overdue": "overdue"
       },
       "sales": {
         "of_goal": "of",
@@ -157,7 +192,31 @@
       "common": {
         "no_data": "Nu sunt date disponibile",
         "pin_title": "Introduceți PIN-ul",
-        "pin_subtitle": "Vă rugăm introduceți codul de acces"
+        "pin_subtitle": "Vă rugăm introduceți codul de acces",
+        "today": "Azi",
+        "yesterday": "Ieri",
+        "days_ago": "zile în urmă",
+        "last_week": "Săptămâna trecută",
+        "weeks_ago": "săptămâni în urmă"
+      },
+      "activity": {
+        "total_actions": "lucruri făcute pentru tine",
+        "nothing_yet": "Nimic de arătat încă",
+        "nothing_yet_sub": "Actualizările vor apărea aici",
+        "category_seo": "SEO",
+        "category_ads": "Reclame",
+        "category_website": "Website",
+        "category_automation": "Automatizare",
+        "category_general": "General"
+      },
+      "automations": {
+        "x_of_y_active": "active",
+        "automated_actions": "acțiuni automate luna aceasta",
+        "this_month": "luna aceasta",
+        "running": "Activ",
+        "paused": "Pauză",
+        "no_automations": "Nicio automatizare încă",
+        "no_automations_sub": "Fluxurile automate vor apărea aici"
       },
       "brief": {
         "service_provider": "Furnizor de servicii",
@@ -191,7 +250,11 @@
         "services": "Servicii",
         "est_cpc": "CPC estimat",
         "by_service": "Cerere pe serviciu",
-        "keywords": "cuvinte cheie"
+        "keywords": "cuvinte cheie",
+        "people_searching": "Atâția caută produsele tale în fiecare lună",
+        "your_products": "Produsele tale",
+        "search_terms": "Termeni de căutare",
+        "per_month_short": "/lună"
       },
       "website": {
         "website_architecture": "Arhitectura site-ului",
@@ -205,7 +268,9 @@
         "search_volume": "Volum căutări",
         "cluster": "Grup",
         "full_url": "URL",
-        "open_link": "Vezi pagina"
+        "open_link": "Vezi pagina",
+        "pages_count": "pagini",
+        "more_keywords": "mai multe"
       },
       "assets": {
         "brand_kit": "Kit de brand",
@@ -214,7 +279,10 @@
         "logos": "Fișiere logo",
         "colors": "Culorile brandului",
         "fonts": "Fonturi brand",
-        "guidelines": "Ghid de brand"
+        "guidelines": "Ghid de brand",
+        "your_files": "Fișierele tale",
+        "file_singular": "fișier",
+        "files_plural": "fișiere"
       },
       "execution": {
         "project_roadmap": "Foaia de parcurs",
@@ -243,7 +311,9 @@
   "all_complete": "Toate etapele finalizate!",
   "your_project": "Proiectul tău",
   "growth_services": "Servicii de creștere",
-  "start_step": "Începe acest pas"
+  "start_step": "Începe acest pas",
+  "at_risk": "risc",
+  "overdue": "întârziat"
   },
   "sales": {
     "of_goal": "din",
@@ -310,7 +380,31 @@
       "common": {
         "no_data": "Пока ничего нет",
         "pin_title": "Введите код",
-        "pin_subtitle": "Введите ваш код доступа"
+        "pin_subtitle": "Введите ваш код доступа",
+        "today": "Сегодня",
+        "yesterday": "Вчера",
+        "days_ago": "дн. назад",
+        "last_week": "На прошлой неделе",
+        "weeks_ago": "нед. назад"
+      },
+      "activity": {
+        "total_actions": "сделано для вас",
+        "nothing_yet": "Пока ничего нет",
+        "nothing_yet_sub": "Здесь будут появляться обновления",
+        "category_seo": "SEO",
+        "category_ads": "Реклама",
+        "category_website": "Сайт",
+        "category_automation": "Автоматизация",
+        "category_general": "Общее"
+      },
+      "automations": {
+        "x_of_y_active": "активно",
+        "automated_actions": "действий за этот месяц",
+        "this_month": "за этот месяц",
+        "running": "Работает",
+        "paused": "На паузе",
+        "no_automations": "Автоматизации пока нет",
+        "no_automations_sub": "Ваши автоматические процессы появятся здесь"
       },
       "brief": {
         "service_provider": "Компания",
@@ -344,7 +438,11 @@
         "services": "Услуги",
         "est_cpc": "Прим. цена клика",
         "by_service": "Запросы по услугам",
-        "keywords": "запросов"
+        "keywords": "запросов",
+        "people_searching": "Столько людей ищут ваши услуги каждый месяц",
+        "your_products": "Ваши услуги",
+        "search_terms": "Запросы",
+        "per_month_short": "/мес."
       },
       "website": {
         "website_architecture": "Структура сайта",
@@ -358,7 +456,9 @@
         "search_volume": "Кол-во запросов",
         "cluster": "Группа",
         "full_url": "URL",
-        "open_link": "Открыть"
+        "open_link": "Открыть",
+        "pages_count": "страниц",
+        "more_keywords": "ещё"
       },
       "assets": {
         "brand_kit": "Брендбук",
@@ -367,7 +467,10 @@
         "logos": "Логотипы",
         "colors": "Цвета",
         "fonts": "Шрифты",
-        "guidelines": "Гайдлайн"
+        "guidelines": "Гайдлайн",
+        "your_files": "Ваши файлы",
+        "file_singular": "файл",
+        "files_plural": "файлов"
       },
       "execution": {
         "project_roadmap": "Ваш план",
@@ -396,7 +499,9 @@
         "all_complete": "Всё готово!",
         "your_project": "Ваш проект",
         "growth_services": "Услуги роста",
-        "start_step": "Начать этот этап"
+        "start_step": "Начать этот этап",
+        "at_risk": "под угрозой",
+        "overdue": "просрочено"
       },
       "sales": {
         "of_goal": "из",
@@ -463,7 +568,31 @@
       "common": {
         "no_data": "Der er ikke noget data endnu",
         "pin_title": "Indtast kode",
-        "pin_subtitle": "Skriv din adgangskode"
+        "pin_subtitle": "Skriv din adgangskode",
+        "today": "I dag",
+        "yesterday": "I går",
+        "days_ago": "dage siden",
+        "last_week": "Sidste uge",
+        "weeks_ago": "uger siden"
+      },
+      "activity": {
+        "total_actions": "ting vi har gjort for dig",
+        "nothing_yet": "Intet at vise endnu",
+        "nothing_yet_sub": "Opdateringer dukker op her",
+        "category_seo": "SEO",
+        "category_ads": "Annoncer",
+        "category_website": "Hjemmeside",
+        "category_automation": "Automation",
+        "category_general": "Generelt"
+      },
+      "automations": {
+        "x_of_y_active": "aktive",
+        "automated_actions": "automatiske handlinger denne måned",
+        "this_month": "denne måned",
+        "running": "Kører",
+        "paused": "Sat på pause",
+        "no_automations": "Ingen automationer endnu",
+        "no_automations_sub": "Dine automatiske arbejdsgange vises her"
       },
       "brief": {
         "service_provider": "Udbyder",
@@ -497,7 +626,11 @@
         "services": "Ydelser",
         "est_cpc": "Ca. klikpris",
         "by_service": "Søgninger pr. ydelse",
-        "keywords": "søgeord"
+        "keywords": "søgeord",
+        "people_searching": "Så mange søger på det du tilbyder hver måned",
+        "your_products": "Dine ydelser",
+        "search_terms": "Søgeord",
+        "per_month_short": "/md."
       },
       "website": {
         "website_architecture": "Hjemmesidens opbygning",
@@ -511,7 +644,9 @@
         "search_volume": "Antal søgninger",
         "cluster": "Gruppe",
         "full_url": "URL",
-        "open_link": "Åbn side"
+        "open_link": "Åbn side",
+        "pages_count": "sider",
+        "more_keywords": "flere"
       },
       "assets": {
         "brand_kit": "Brandmateriale",
@@ -520,7 +655,10 @@
         "logos": "Logoer",
         "colors": "Farver",
         "fonts": "Skrifttyper",
-        "guidelines": "Brandguide"
+        "guidelines": "Brandguide",
+        "your_files": "Dine filer",
+        "file_singular": "fil",
+        "files_plural": "filer"
       },
       "execution": {
         "project_roadmap": "Din plan",
@@ -549,7 +687,9 @@
         "all_complete": "Alt er klart!",
         "your_project": "Dit projekt",
         "growth_services": "Vækstydelser",
-        "start_step": "Start dette trin"
+        "start_step": "Start dette trin",
+        "at_risk": "i fare",
+        "overdue": "forsinket"
       },
       "sales": {
         "of_goal": "af",
@@ -616,7 +756,31 @@
       "common": {
         "no_data": "Noch keine Daten verfügbar",
         "pin_title": "PIN eingeben",
-        "pin_subtitle": "Bitte geben Sie Ihren Zugangscode ein"
+        "pin_subtitle": "Bitte geben Sie Ihren Zugangscode ein",
+        "today": "Heute",
+        "yesterday": "Gestern",
+        "days_ago": "Tagen",
+        "last_week": "Letzte Woche",
+        "weeks_ago": "Wochen"
+      },
+      "activity": {
+        "total_actions": "Dinge, die wir für Sie gemacht haben",
+        "nothing_yet": "Noch nichts zu zeigen",
+        "nothing_yet_sub": "Updates erscheinen hier",
+        "category_seo": "SEO",
+        "category_ads": "Werbung",
+        "category_website": "Website",
+        "category_automation": "Automatisierung",
+        "category_general": "Allgemein"
+      },
+      "automations": {
+        "x_of_y_active": "aktiv",
+        "automated_actions": "automatische Aktionen diesen Monat",
+        "this_month": "diesen Monat",
+        "running": "Läuft",
+        "paused": "Pausiert",
+        "no_automations": "Noch keine Automatisierungen",
+        "no_automations_sub": "Ihre automatischen Abläufe erscheinen hier"
       },
       "brief": {
         "service_provider": "Dienstleister",
@@ -650,7 +814,11 @@
         "services": "Dienstleistungen",
         "est_cpc": "Gesch. CPC",
         "by_service": "Nachfrage nach Dienstleistung",
-        "keywords": "Keywords"
+        "keywords": "Keywords",
+        "people_searching": "So viele suchen jeden Monat nach Ihren Produkten",
+        "your_products": "Ihre Produkte",
+        "search_terms": "Suchbegriffe",
+        "per_month_short": "/Mt."
       },
       "website": {
         "website_architecture": "Website-Architektur",
@@ -664,7 +832,9 @@
         "search_volume": "Suchvolumen",
         "cluster": "Cluster",
         "full_url": "URL",
-        "open_link": "Seite öffnen"
+        "open_link": "Seite öffnen",
+        "pages_count": "Seiten",
+        "more_keywords": "weitere"
       },
       "assets": {
         "brand_kit": "Markenpaket",
@@ -673,7 +843,10 @@
         "logos": "Logo-Dateien",
         "colors": "Markenfarben",
         "fonts": "Markenschriften",
-        "guidelines": "Markenrichtlinien"
+        "guidelines": "Markenrichtlinien",
+        "your_files": "Ihre Dateien",
+        "file_singular": "Datei",
+        "files_plural": "Dateien"
       },
       "execution": {
         "project_roadmap": "Projektplan",
@@ -702,7 +875,9 @@
   "all_complete": "Alle Meilensteine abgeschlossen!",
   "your_project": "Ihr Projekt",
   "growth_services": "Wachstumsdienste",
-  "start_step": "Diesen Schritt starten"
+  "start_step": "Diesen Schritt starten",
+  "at_risk": "gefährdet",
+  "overdue": "überfällig"
   },
   "sales": {
     "of_goal": "von",
@@ -769,7 +944,31 @@
       "common": {
         "no_data": "Aucune donnée disponible",
         "pin_title": "Entrez le PIN",
-        "pin_subtitle": "Veuillez saisir votre code d'accès"
+        "pin_subtitle": "Veuillez saisir votre code d'accès",
+        "today": "Aujourd'hui",
+        "yesterday": "Hier",
+        "days_ago": "jours",
+        "last_week": "La semaine dernière",
+        "weeks_ago": "semaines"
+      },
+      "activity": {
+        "total_actions": "actions réalisées pour vous",
+        "nothing_yet": "Rien à afficher",
+        "nothing_yet_sub": "Les mises à jour apparaîtront ici",
+        "category_seo": "SEO",
+        "category_ads": "Publicités",
+        "category_website": "Site web",
+        "category_automation": "Automatisation",
+        "category_general": "Général"
+      },
+      "automations": {
+        "x_of_y_active": "actives",
+        "automated_actions": "actions automatiques ce mois-ci",
+        "this_month": "ce mois-ci",
+        "running": "En cours",
+        "paused": "En pause",
+        "no_automations": "Pas encore d'automatisations",
+        "no_automations_sub": "Vos workflows automatiques apparaîtront ici"
       },
       "brief": {
         "service_provider": "Prestataire",
@@ -803,7 +1002,11 @@
         "services": "Services",
         "est_cpc": "CPC est.",
         "by_service": "Demande par service",
-        "keywords": "mots-clés"
+        "keywords": "mots-clés",
+        "people_searching": "Nombre de recherches mensuelles pour vos produits",
+        "your_products": "Vos produits",
+        "search_terms": "Termes de recherche",
+        "per_month_short": "/mois"
       },
       "website": {
         "website_architecture": "Architecture du site",
@@ -817,7 +1020,9 @@
         "search_volume": "Volume de recherche",
         "cluster": "Groupe",
         "full_url": "URL",
-        "open_link": "Voir la page"
+        "open_link": "Voir la page",
+        "pages_count": "pages",
+        "more_keywords": "de plus"
       },
       "assets": {
         "brand_kit": "Kit de marque",
@@ -826,7 +1031,10 @@
         "logos": "Fichiers logo",
         "colors": "Couleurs de marque",
         "fonts": "Polices de marque",
-        "guidelines": "Charte graphique"
+        "guidelines": "Charte graphique",
+        "your_files": "Vos fichiers",
+        "file_singular": "fichier",
+        "files_plural": "fichiers"
       },
       "execution": {
         "project_roadmap": "Plan du projet",
@@ -855,7 +1063,9 @@
   "all_complete": "Toutes les étapes complétées!",
   "your_project": "Votre projet",
   "growth_services": "Services de croissance",
-  "start_step": "Lancer cette étape"
+  "start_step": "Lancer cette étape",
+  "at_risk": "à risque",
+  "overdue": "en retard"
   },
   "sales": {
     "of_goal": "sur",
@@ -922,7 +1132,31 @@
       "common": {
         "no_data": "Aún no hay datos disponibles",
         "pin_title": "Ingrese PIN",
-        "pin_subtitle": "Por favor ingrese su código de acceso"
+        "pin_subtitle": "Por favor ingrese su código de acceso",
+        "today": "Hoy",
+        "yesterday": "Ayer",
+        "days_ago": "días",
+        "last_week": "La semana pasada",
+        "weeks_ago": "semanas"
+      },
+      "activity": {
+        "total_actions": "cosas que hicimos por ti",
+        "nothing_yet": "Nada que mostrar aún",
+        "nothing_yet_sub": "Las actualizaciones aparecerán aquí",
+        "category_seo": "SEO",
+        "category_ads": "Anuncios",
+        "category_website": "Web",
+        "category_automation": "Automatización",
+        "category_general": "General"
+      },
+      "automations": {
+        "x_of_y_active": "activas",
+        "automated_actions": "acciones automáticas este mes",
+        "this_month": "este mes",
+        "running": "Activa",
+        "paused": "Pausada",
+        "no_automations": "Aún no hay automatizaciones",
+        "no_automations_sub": "Tus flujos automáticos aparecerán aquí"
       },
       "brief": {
         "service_provider": "Proveedor de servicios",
@@ -956,7 +1190,11 @@
         "services": "Servicios",
         "est_cpc": "CPC est.",
         "by_service": "Demanda por servicio",
-        "keywords": "palabras clave"
+        "keywords": "palabras clave",
+        "people_searching": "Personas que buscan tus productos cada mes",
+        "your_products": "Tus productos",
+        "search_terms": "Términos de búsqueda",
+        "per_month_short": "/mes"
       },
       "website": {
         "website_architecture": "Arquitectura del sitio",
@@ -970,7 +1208,9 @@
         "search_volume": "Volumen de búsqueda",
         "cluster": "Grupo",
         "full_url": "URL",
-        "open_link": "Ver página"
+        "open_link": "Ver página",
+        "pages_count": "páginas",
+        "more_keywords": "más"
       },
       "assets": {
         "brand_kit": "Kit de marca",
@@ -979,7 +1219,10 @@
         "logos": "Archivos de logo",
         "colors": "Colores de marca",
         "fonts": "Tipografías de marca",
-        "guidelines": "Manual de marca"
+        "guidelines": "Manual de marca",
+        "your_files": "Tus archivos",
+        "file_singular": "archivo",
+        "files_plural": "archivos"
       },
       "execution": {
         "project_roadmap": "Plan del proyecto",
@@ -1008,7 +1251,9 @@
   "all_complete": "Todos los hitos completados!",
   "your_project": "Tu proyecto",
   "growth_services": "Servicios de crecimiento",
-  "start_step": "Iniciar este paso"
+  "start_step": "Iniciar este paso",
+  "at_risk": "en riesgo",
+  "overdue": "atrasado"
   },
   "sales": {
     "of_goal": "de",

@@ -68,14 +68,14 @@ export function DemandTab({ data, lang, translations }: Props) {
 
       {/* Hero -- "How many people need what you sell?" */}
       <div
-        className="flex flex-col gap-3 rounded-2xl p-4"
+        className="flex flex-col gap-3 p-4"
         style={{
           backgroundColor: "var(--surface-1)",
           borderRadius: "var(--client-radius, 0.75rem)",
         }}
       >
         <span className="text-xs font-medium opacity-40">
-          {t("demand.people_searching", lang, translations) || "People searching for your products every month"}
+          {t("demand.people_searching", lang, translations)}
         </span>
         <div className="flex items-baseline gap-2">
           <span
@@ -89,12 +89,12 @@ export function DemandTab({ data, lang, translations }: Props) {
           <MiniStat
             icon={Globe}
             value={summary.pages_targeted.toString()}
-            label={t("demand.your_products", lang, translations) || "Your products"}
+            label={t("demand.your_products", lang, translations)}
           />
           <MiniStat
             icon={Search}
             value={summary.total_keywords.toString()}
-            label={t("demand.search_terms", lang, translations) || "Search terms"}
+            label={t("demand.search_terms", lang, translations)}
           />
         </div>
       </div>
@@ -102,7 +102,7 @@ export function DemandTab({ data, lang, translations }: Props) {
       {/* Service breakdown -- grouped by landing page */}
       <div className="flex flex-col gap-2">
         <span className="text-[10px] font-bold uppercase tracking-widest opacity-35">
-          {t("demand.by_service", lang, translations) || "What people are looking for"}
+          {t("demand.by_service", lang, translations)}
         </span>
 
           {summary.by_page.map((page, pi) => (
@@ -194,7 +194,7 @@ function ServiceCard({
             {serviceName}
           </span>
           <div className="flex items-center gap-1.5 text-[10px] opacity-45 min-w-0 overflow-hidden">
-            <span className="shrink-0">{page.keyword_count} {t("demand.keywords", lang, translations) || "keywords"}</span>
+            <span className="shrink-0">{page.keyword_count} {t("demand.keywords", lang, translations)}</span>
             {page.avg_cpc_high > 0 && (
               <>
                 <span className="shrink-0">{"·"}</span>
@@ -212,7 +212,7 @@ function ServiceCard({
             >
               {fmtVolume(page.total_volume)}
             </span>
-            <span className="text-[9px] opacity-35">/mo</span>
+            <span className="text-[9px] opacity-35">{t("demand.per_month_short", lang, translations)}</span>
           </div>
           <ChevronDown
             className="h-3.5 w-3.5 transition-transform duration-200"
@@ -253,7 +253,7 @@ function ServiceCard({
               {page.ad_groups.map((ag, i) => (
                 <span
                   key={i}
-                  className="rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+                  className="px-1.5 py-0.5 text-[10px] font-medium"
                   style={{
                     backgroundColor: "var(--client-primary, #3b82f6)0a",
                     color: "var(--client-primary, #3b82f6)",
