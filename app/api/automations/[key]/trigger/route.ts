@@ -18,7 +18,8 @@ import { getAutomation } from "@/lib/automations/registry";
  *   3. Checks that the automation exists and is enabled
  *   4. Looks up client-specific config from the automations table
  *   5. Calls the automation's run() method
- *   6. Increments the counter and logs the run
+ *   6. If require_approval is set, saves a pending_approval draft instead of sending
+ *   7. Increments the counter and logs the run
  */
 export async function POST(
   req: NextRequest,
@@ -34,7 +35,12 @@ export async function POST(
   }
 
   const { key } = await params;
-  const body = await req.json().catch(() => ({}));
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
   // ── Resolve client ────────────────────────────────────────────────────
   const clientId: string | undefined = body.client_id;
@@ -60,7 +66,7 @@ export async function POST(
   // ── Resolve automation ────────────────────────────────────────────────
   const { data: automationRow, error: automationError } = await supabase
     .from("automations")
-    .select("id, is_enabled, config")
+    .select("id, is_enabled, config, require_approval")
     .eq("client_id", client.id)
     .eq("automation_key", key)
     .single();
@@ -88,6 +94,8 @@ export async function POST(
     );
   }
 
+  const requireApproval = automationRow.require_approval === true;
+
   // ── Run ───────────────────────────────────────────────────────────────
   const startedAt = Date.now();
   let result;
@@ -97,6 +105,7 @@ export async function POST(
       client_id: client.id,
       slug: client.slug,
       config: (automationRow.config as Record<string, unknown>) ?? {},
+      draftMode: requireApproval,
     });
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
@@ -111,6 +120,22 @@ export async function POST(
     });
 
     return NextResponse.json({ error: "Automation failed" }, { status: 500 });
+  }
+
+  // ── Draft mode: store for approval and return early ───────────────────
+  if (requireApproval && result.draftContent) {
+    await supabase.from("automation_runs").insert({
+      automation_id: automationRow.id,
+      client_id: client.id,
+      status: "pending_approval",
+      draft_content: result.draftContent,
+      payload: body,
+      input_summary: JSON.stringify(body).slice(0, 500),
+      output_summary: result.summary,
+    });
+
+    console.log(`[automation/${key}] Draft stored for approval — client ${client.slug}`);
+    return NextResponse.json({ success: true, pending_approval: true });
   }
 
   // ── Log the run ───────────────────────────────────────────────────────

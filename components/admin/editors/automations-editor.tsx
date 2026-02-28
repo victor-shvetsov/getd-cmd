@@ -18,6 +18,7 @@ interface Automation {
   description: string;
   automation_key: string;
   is_enabled: boolean;
+  require_approval: boolean;
   counter_label: string;
   counter_value: number;
   sort_order: number;
@@ -480,6 +481,35 @@ function AutomationRow({
                       <span style={{ color: "var(--adm-text)" }}>{new Date(a.updated_at).toLocaleDateString()}</span>
                     </div>
                   </div>
+
+                  {/* Require approval toggle */}
+                  <div
+                    className="flex items-center justify-between rounded-lg px-3 py-2.5"
+                    style={{ backgroundColor: "var(--adm-surface-2)" }}
+                  >
+                    <div>
+                      <p className="text-[11px] font-semibold" style={{ color: "var(--adm-text)" }}>
+                        Require approval before sending
+                      </p>
+                      <p className="text-[10px] mt-0.5" style={{ color: "var(--adm-text-muted)" }}>
+                        Drafts go to a review queue — client approves before sending
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onUpdate(a.id, { require_approval: !a.require_approval }); }}
+                      className="relative h-5 w-9 flex-shrink-0 rounded-full transition-colors"
+                      style={{
+                        backgroundColor: a.require_approval ? "var(--adm-accent)" : "var(--adm-surface)",
+                        border: a.require_approval ? "none" : "1px solid var(--adm-border)",
+                      }}
+                    >
+                      <div
+                        className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all"
+                        style={{ left: a.require_approval ? "calc(100% - 18px)" : "2px" }}
+                      />
+                    </button>
+                  </div>
+
                   <div className="flex gap-2">
                     <button
                       onClick={() => setEditing(true)}

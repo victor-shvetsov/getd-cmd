@@ -23,7 +23,8 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const body = await request.json().catch(() => ({}));
+  let body: Record<string, unknown> = {};
+  try { body = await request.json(); } catch { /* body is optional for this route */ }
   const onlyEmpty = body.onlyEmpty !== false; // default: true
 
   const supabase = createAdminClient();

@@ -38,6 +38,16 @@ export async function POST(request: Request) {
     translations: getDefaultTranslations(),
   });
 
+  // Seed 6 primary tabs — new clients start with all active tabs visible
+  await supabase.from("client_tabs").insert([
+    { client_id: data.id, tab_key: "sales",       sort_order: 0, data: { revenue_goal: 0, currency: "DKK", product_categories: [] }, is_visible: true },
+    { client_id: data.id, tab_key: "demand",      sort_order: 1, data: {}, is_visible: true },
+    { client_id: data.id, tab_key: "activity",    sort_order: 2, data: {}, is_visible: true },
+    { client_id: data.id, tab_key: "assets",      sort_order: 3, data: {}, is_visible: true },
+    { client_id: data.id, tab_key: "automations", sort_order: 4, data: {}, is_visible: true },
+    { client_id: data.id, tab_key: "execution",   sort_order: 5, data: {}, is_visible: true },
+  ]);
+
   return NextResponse.json(data, { status: 201 });
 }
 

@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
   // ── Resolve automation ────────────────────────────────────────────────
   const { data: automationRow, error: automationError } = await supabase
     .from("automations")
-    .select("id, is_enabled, config")
+    .select("id, is_enabled, config, require_approval")
     .eq("client_id", client.id)
     .eq("automation_key", "lead_reply")
     .single();
@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
   }
 
   const config = (automationRow.config as Record<string, unknown>) ?? {};
+  const requireApproval = automationRow.require_approval === true;
 
   // ── Parse the raw email with Claude ──────────────────────────────────
   let parsed;
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest) {
         subject: parsed.subject || subject,
         message: parsed.message,
       },
-      { client_id: client.id, slug: client.slug, config }
+      { client_id: client.id, slug: client.slug, config, draftMode: requireApproval }
     );
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
@@ -139,6 +140,29 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ error: "Automation failed" }, { status: 500 });
+  }
+
+  // ── Draft mode: store for approval and return early ───────────────────
+  if (requireApproval && result.draftContent) {
+    await supabase.from("automation_runs").insert({
+      automation_id: automationRow.id,
+      client_id: client.id,
+      status: "pending_approval",
+      draft_content: result.draftContent,
+      // Store lead info so the approve endpoint knows where to send
+      payload: {
+        from_email: parsed.from_email,
+        from_name: parsed.from_name,
+        subject: parsed.subject || subject,
+        message: parsed.message,
+        lead_id: lead?.id ?? null,
+      },
+      input_summary: `Lead from ${parsed.from_email}`,
+      output_summary: result.summary,
+    });
+
+    console.log(`[inbound-lead] Draft stored for approval — client ${slug}`);
+    return NextResponse.json({ success: true, pending_approval: true });
   }
 
   // ── Log run ───────────────────────────────────────────────────────────

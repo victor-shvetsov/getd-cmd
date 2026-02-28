@@ -11,7 +11,12 @@ import { NextResponse, type NextRequest } from "next/server";
  * Body: { automation_id, client_id, is_enabled }
  */
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const { automation_id, client_id, is_enabled } = body;
 
   if (!automation_id || !client_id || typeof is_enabled !== "boolean") {

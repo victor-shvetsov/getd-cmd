@@ -26,6 +26,11 @@ export interface ClientConfig {
   slug: string;
   /** Automation-specific config from automations.config JSONB */
   config: Record<string, unknown>;
+  /**
+   * When true, the automation generates content but does NOT send it.
+   * The caller is responsible for storing the draft and awaiting approval.
+   */
+  draftMode?: boolean;
 }
 
 export interface AutomationResult {
@@ -36,6 +41,11 @@ export interface AutomationResult {
   increment?: number;
   /** Error message if success = false */
   error?: string;
+  /**
+   * When draftMode was true, the generated content to be reviewed before sending.
+   * Not set when draftMode is false (normal run).
+   */
+  draftContent?: string;
 }
 
 export interface AutomationRunner {

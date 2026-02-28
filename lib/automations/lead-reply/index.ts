@@ -65,6 +65,16 @@ export class LeadReplyAutomation implements AutomationRunner {
       .map((b) => (b as { type: "text"; text: string }).text)
       .join("");
 
+    // Draft mode: return content without sending — caller stores draft for approval
+    if (config.draftMode) {
+      return {
+        success: true,
+        summary: `Draft created for ${lead.from_name} <${lead.from_email}>`,
+        draftContent: replyText,
+        increment: 0,
+      };
+    }
+
     const result = await sendEmail({
       to: lead.from_email,
       subject: lead.subject ? `Re: ${lead.subject}` : "Thanks for reaching out",

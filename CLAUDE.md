@@ -8,10 +8,13 @@
 
 A white-labeled client portal for Victor's digital marketing agency in Copenhagen.
 Each client gets a personal URL, logs in with a PIN, and sees a branded dashboard showing
-their sales, market demand, activity log, assets, automations, and project roadmap.
+only the tabs that are relevant to their business and what they're paying for.
 
-The target user is "Thomas" — a non-technical business owner. If Thomas wouldn't understand
-something in 3 seconds, it doesn't belong in the client view.
+Victor is 30, started the agency at 27, team of 8 specialists. He's good at the work and bad at charging for it — this app is partly a technical product and partly a behavioural fix: when clients pay upfront through the app, Victor doesn't have to ask.
+
+The tab system is modular. Thomas (e-commerce) sees Sales + Demand + Assets + Execution. Casper (plumber, automations client) sees only Automations + Execution. Victor controls which tabs each client sees via the `is_visible` flag on `client_tabs` — the client portal never shows hidden tabs.
+
+The golden rule for client-facing UI: if Thomas wouldn't understand it in 3 seconds, it doesn't belong.
 
 ---
 
@@ -27,6 +30,29 @@ something in 3 seconds, it doesn't belong in the client view.
 | File storage | Vercel Blob |
 | Hosting | Vercel (auto-deploys from GitHub main branch) |
 | Package manager | pnpm |
+
+---
+
+## Client Archetypes
+
+| Archetype | Example | Tabs enabled |
+|-----------|---------|--------------|
+| E-commerce | Thomas (lucaffe.dk, espresso machines) | Sales, Demand, Assets, Execution |
+| Service + automations | Casper (plumber, BNI) | Automations, Execution |
+| Full-service marketing | Mixed | All 6 tabs |
+
+New clients are seeded with all 6 tabs visible. Victor hides tabs the client doesn't need via the `is_visible` toggle in the admin Automations/Sales/Activity sections.
+
+---
+
+## Planned Features (Not Yet Built)
+
+These are confirmed requirements. Do not design around their absence.
+
+- **Approval queue**: per-automation "require approval before sending" toggle. Draft sits in `automation_runs` with `status: pending_approval`. Client sees it in their Automations tab queue before it sends.
+- **Admin team access**: currently single-password. Will need multi-user auth — Victor (full access) + team members (scoped access).
+- **Knowledge Hub → content generation**: KW research + URL structure + Knowledge Hub notes → Claude drafts landing page copy.
+- **SaaS licensing**: other agencies can run their own instance. Architecture must stay white-label ready (no hardcoded agency identity).
 
 ---
 

@@ -65,6 +65,16 @@ export class ReviewCollectorAutomation implements AutomationRunner {
       .map((b) => (b as { type: "text"; text: string }).text)
       .join("");
 
+    // Draft mode: return content without sending — caller stores draft for approval
+    if (config.draftMode) {
+      return {
+        success: true,
+        summary: `Draft created for ${data.customer_name} <${data.customer_email}>`,
+        draftContent: message,
+        increment: 0,
+      };
+    }
+
     const result = await sendReviewRequest({
       to: data.customer_email,
       customerName: data.customer_name,

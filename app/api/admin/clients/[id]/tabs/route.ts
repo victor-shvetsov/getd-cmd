@@ -77,14 +77,18 @@ export async function PATCH(
   return NextResponse.json(data);
 }
 
-// Canonical tab order
+// Canonical tab order — matches the client view order
 const TAB_ORDER: Record<string, number> = {
-  brief: 0,
-  marketing_channels: 1,
-  demand: 2,
-  website: 3,
-  assets: 4,
+  sales: 0,
+  demand: 1,
+  activity: 2,
+  assets: 3,
+  automations: 4,
   execution: 5,
+  // Legacy (kept for existing clients)
+  brief: 6,
+  marketing_channels: 7,
+  website: 8,
 };
 
 export async function PUT(

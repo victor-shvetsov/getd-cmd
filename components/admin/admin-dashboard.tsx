@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import type { ClientRow } from "@/lib/types";
 import {
@@ -15,7 +16,6 @@ import {
   Search,
 } from "lucide-react";
 import Image from "next/image";
-import { ClientEditor } from "@/components/admin/client-editor";
 import { HealthCheck } from "@/components/admin/health-check";
 import { AdminThemeToggle } from "./admin-theme-toggle";
 
@@ -35,6 +35,7 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ onLogout, token, theme, toggleTheme }: AdminDashboardProps) {
+  const router = useRouter();
   const authFetcher = useCallback(
     (url: string) =>
       fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => {
@@ -45,7 +46,6 @@ export function AdminDashboard({ onLogout, token, theme, toggleTheme }: AdminDas
   );
 
   const { data: clients, mutate } = useSWR<ClientRow[]>("/api/admin/clients", authFetcher);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [showHealth, setShowHealth] = useState(false);
   const [creating, setCreating] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
@@ -83,51 +83,16 @@ export function AdminDashboard({ onLogout, token, theme, toggleTheme }: AdminDas
     });
     if (res.ok) {
       const newClient = await res.json();
-      await mutate();
-      setEditingId(newClient.id);
+      router.push(`/admin/${newClient.id}/general`);
     }
     setCreating(false);
-  }, [mutate, token]);
-
-  const handleSave = useCallback(() => {
-    mutate();
-    setEditingId(null);
-  }, [mutate]);
-
-  const handleDelete = useCallback(
-    async (id: string) => {
-      await fetch(`/api/admin/clients/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      mutate();
-      if (editingId === id) setEditingId(null);
-    },
-    [mutate, editingId, token]
-  );
+  }, [router, token]);
 
   if (showHealth) {
     return (
       <HealthCheck
         token={token}
         onBack={() => setShowHealth(false)}
-        theme={theme}
-        toggleTheme={toggleTheme}
-      />
-    );
-  }
-
-  if (editingId) {
-    return (
-      <ClientEditor
-        clientId={editingId}
-        token={token}
-        onBack={() => {
-          setEditingId(null);
-          mutate();
-        }}
-        onSave={handleSave}
-        onDelete={() => handleDelete(editingId)}
         theme={theme}
         toggleTheme={toggleTheme}
       />
@@ -228,7 +193,7 @@ export function AdminDashboard({ onLogout, token, theme, toggleTheme }: AdminDas
             {filteredClients.map((client) => (
               <button
                 key={client.id}
-                onClick={() => setEditingId(client.id)}
+                onClick={() => router.push(`/admin/${client.id}/general`)}
                 className="group relative flex flex-col overflow-hidden rounded-xl border text-left transition-all hover:shadow-md"
                 style={{
                   borderColor: "var(--adm-border)",

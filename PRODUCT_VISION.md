@@ -12,9 +12,17 @@ Victor runs a digital marketing and web development agency in Copenhagen. He doe
 
 Victor is also an automation builder. He's pivoting his BNI (networking group) pitch from "digital marketing agency" to "I build automations that save you time and make you money." The automations are technically simple for him but feel like dark magic to his clients.
 
+Victor is 30 years old and started the agency three years ago — his first business ever, after spending his earlier career as a car technician. He built a team of eight specialists: designer, developer, photographer, PPC expert, SEO specialist, and two trainees. The work is excellent. The business side has been the struggle: Victor tends to undercharge, gives too much away for free, doesn't bind clients to contracts, and often ends up chasing unpaid invoices. He's come close to burnout from it.
+
+After three years and roughly 20 clients, the operation still runs partly out of Google Drive and partly out of memory. This app is also about structure — one place where every client relationship lives, from first conversation to recurring payment.
+
+Victor's BNI play is deliberate: he's pitching himself as an "AI automation specialist" rather than a marketing agency. Most business owners in BNI have been burned by bad marketing agencies before, and the word "marketing" triggers skepticism. "Automations that save you time and make you money" is a different conversation — it's tangible, it's novel, and it positions Victor uniquely in the room.
+
 ---
 
-## The Target User: "Thomas"
+## The Clients
+
+### Client Type A: Thomas (E-commerce)
 
 Thomas runs lucaffe.dk -- he sells espresso machines in Denmark. All his sales come from networking, zero online presence. His exact words about computers: "The only thing I know is how to open e-conomics and press my 3 buttons to send an invoice. That's all I can do."
 
@@ -24,6 +32,21 @@ Thomas represents every client this app is built for:
 - **They care about ONE thing: am I selling enough stuff?**
 - **They value their time above everything** -- they're busy doing their actual work
 - **They buy results, not services** -- Thomas doesn't buy "SEO", he buys "more of those 27,400 people finding my shop"
+
+Thomas's dashboard: Sales, Demand, Assets, Execution. No automations — his business doesn't need them yet.
+
+### Client Type B: Casper (Service Business)
+
+Casper is a plumber from Victor's BNI group. He's busy, reliable, and booked solid. He already has a marketing agency bringing leads to his inbox — but he's so busy that replies take days. Leads go cold. He also never posts on social media (no time) and has almost no Trustpilot reviews despite doing great work.
+
+Victor's offer to Casper: automate the three things he can't find time for.
+- **Lead Reply**: every new email enquiry gets a personal-sounding response within minutes, written in Casper's voice
+- **Social Poster**: Casper sends a WhatsApp photo of a finished job → automation writes the caption and posts it
+- **Review Collector**: automatically emails each customer after a job asking for a Trustpilot review
+
+**What makes Casper different from Thomas:** Casper wants to stay in control. He's skeptical about anything sending messages "in his name" without him seeing it first. So the automation must support an **approval mode** — when turned on, drafts land in a queue inside his dashboard before anything is sent. He reviews, edits if needed, then approves. The toggle is per-automation. When Casper trusts the system, he switches it to "send automatically." When he's got a big job and wants to be hands-on, he switches back to approval mode.
+
+Casper's dashboard: only Automations and Execution tabs. No Sales, no Demand. He doesn't need them.
 
 ### The Golden Rule
 If Thomas wouldn't understand it in 3 seconds, it doesn't belong in the client view.
@@ -101,6 +124,9 @@ Three core automations Victor offers (universal across most businesses):
 - Custom automations Victor builds for specific clients appear here too as additional cards
 - On/off toggles update the `is_enabled` flag in Supabase; the automation engine checks this before running
 
+**Approval mode (planned):**
+Some clients — especially service businesses new to automation — want to review drafts before they go out. Each automation will support an optional "require approval" toggle. When on: the automation generates the content, saves it as a pending draft, and shows it in a queue inside the client's Automations tab. The client reads it, edits if needed, then approves. When off: it sends immediately. This is the difference between Casper trusting the system on day 30 vs day 1.
+
 ### Tab 6: Execution / Roadmap / Next Steps (The Money Tab)
 
 **What it answers:** "What's the plan, and what's the next step?"
@@ -122,6 +148,22 @@ This is where Victor's cash flow problem dies forever. Instead of sending propos
 - Each service shows a value proposition card: what you get, what's included, expected outcomes
 
 **Naming note:** "Execution" is Victor's internal word. For clients, something like "Plan", "Roadmap", or "Next Steps" feels more natural.
+
+---
+
+## The Knowledge Hub (Victor's Memory)
+
+Every client relationship generates information: what the business does, who their customers are, what voice and tone they use, what Victor's strategy is, what was discussed in the last call. Currently this lives across Google Drive, WhatsApp, and Victor's head.
+
+The Knowledge Hub is an admin-only scratchpad per client. Victor (or a team member) types up anything worth remembering:
+- Business facts: products, pricing, location, competitors, seasonality
+- ICP notes: who their ideal customers are, how they find them, what they care about
+- Brand voice samples: copy the client actually wrote, how they talk, their preferred words
+- Strategy notes: what's working, what to try next, Victor's observations
+
+**Why it matters technically:** This is the context layer that makes the AI features actually good. When the automation needs to write in "Casper's voice," it pulls from the voice samples stored here. When Victor needs to build a website from scratch, the Knowledge Hub feeds a generation step: keyword research + URL structure + client knowledge → first-draft landing page copy, ready to hand to the designer. No blank page, no guessing.
+
+The Knowledge Hub is not a CRM. It's not project management. It's structured memory — the thing that turns generic AI output into something that feels like it was written by someone who actually knows the business.
 
 ---
 
@@ -156,6 +198,7 @@ This is where Victor's cash flow problem dies forever. Instead of sending propos
 2. **Automations** -- monthly retainers for maintaining and running automation workflows. Recurring Stripe subscriptions.
 3. **SEO & ongoing marketing** -- monthly retainers with binding periods. Recurring Stripe subscriptions.
 4. **The app itself** -- not a separate product. It's the retention and payment tool that holds everything together. Clients never question what they're paying for because they can see it all.
+5. **The platform itself (future)** -- Once the product is proven on Victor's own clients, the long-term play is licensing it to other agencies. Each agency gets their own white-labeled instance: their branding on the admin, their domain, their clients. The architecture already supports this (per-client CSS variables, slug-based routing, no hardcoded agency identity). This is not a current priority — but no decision should make it harder.
 
 **Revenue flow:** Client opens app -> sees value -> follows the roadmap -> pays with Stripe -> Victor delivers -> results show in the dashboard -> client sees more value -> cycle continues.
 
@@ -244,8 +287,13 @@ _Add new ideas and open questions below as they come up:_
 - [ ] How to represent "where customers come from" simply (Google vs networking vs Instagram)
 - [ ] Notification system -- should Thomas get a push notification when a new sale comes in?
 - [ ] Referral mechanism -- Thomas shows the app to business friends. Can we make that easy?
-- [ ] White-label the whole thing so other agencies could use it? (future product play)
+- [ ] Approval queue: where exactly does the pending draft live in the DB? Suggest adding a `status` field to `automation_runs`: pending_approval → approved → sent
+- [ ] How does Casper get notified that a draft is waiting for him? (push notification, email, or badge on the app icon)
+- [ ] Knowledge Hub: what's the right input UX — freeform notes per category, or structured fields?
+- [ ] Future SaaS: what's the multi-tenancy model — one Supabase project per agency, or row-level isolation within one project?
 
 ---
 
 *This document is the north star. When in doubt about any design decision, feature priority, or wording choice -- come back here and ask: "Would Thomas understand this in 3 seconds?"*
+
+*When in doubt about any automation decision: "Would Casper trust this enough to leave it running while he's under a sink?"*

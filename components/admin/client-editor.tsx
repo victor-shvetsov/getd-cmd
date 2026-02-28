@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import type { ClientRow, ClientType, TabKey } from "@/lib/types";
-import { CLIENT_TYPES, CLIENT_TYPE_LABELS, TAB_KEYS } from "@/lib/types";
+import { CLIENT_TYPES, CLIENT_TYPE_LABELS, ACTIVE_TAB_KEYS } from "@/lib/types";
 import {
   ArrowLeft,
   Save,
   Trash2,
   Eye,
+  EyeOff,
   ExternalLink,
   AlertTriangle,
   ChevronDown,
@@ -44,19 +46,30 @@ import { AdminThemeToggle } from "./admin-theme-toggle";
 
 interface ClientResponse {
   client: ClientRow;
-  tabs: { tab_key: TabKey; sort_order: number; is_visible: boolean }[];
+  tabs: { id: string; tab_key: TabKey; sort_order: number; is_visible: boolean }[];
   translations: unknown[];
   tabTranslations: unknown[];
 }
 
 interface ClientEditorProps {
   clientId: string;
+  section: string; // URL segment: "general" | "branding" | "knowledge" | tab_key
   token: string;
-  onBack: () => void;
-  onSave: () => void;
   onDelete: () => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
+}
+
+// Map URL segment → internal section key
+function urlToSectionKey(segment: string): string {
+  const fixed = new Set(["general", "branding", "knowledge"]);
+  if (fixed.has(segment)) return segment;
+  return `tab:${segment}`;
+}
+
+// Map internal section key → URL segment
+function sectionKeyToUrl(key: string): string {
+  return key.replace("tab:", "");
 }
 
 /* ------------------------------------------------------------------ */
@@ -81,22 +94,17 @@ const FIXED_SECTIONS: SectionDef[] = [
 ];
 
 const CONTENT_TAB_ICONS: Record<TabKey, React.ElementType> = {
+  sales:              ShoppingBag,
+  demand:             TrendingUp,
+  activity:           Activity,
+  assets:             FolderOpen,
+  automations:        Zap,
+  execution:          ListChecks,
+  // Legacy
   brief:              FileText,
   marketing_channels: Megaphone,
-  demand:             TrendingUp,
   website:            Globe,
-  assets:             FolderOpen,
-  execution:          ListChecks,
 };
-
-const ACTIVITY_SECTIONS: SectionDef[] = [
-  { key: "activity", label: "Activity", icon: Activity, kind: "fixed", group: "activity" },
-  { key: "automations", label: "Automations", icon: Zap, kind: "fixed", group: "activity" },
-];
-
-const REVENUE_SECTIONS: SectionDef[] = [
-  { key: "sales", label: "Sales", icon: ShoppingBag, kind: "fixed", group: "revenue" },
-];
 
 const AI_SECTIONS: SectionDef[] = [
   { key: "knowledge", label: "Knowledge", icon: Brain, kind: "fixed", group: "ai" },
@@ -106,7 +114,8 @@ const AI_SECTIONS: SectionDef[] = [
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
-export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme, toggleTheme }: ClientEditorProps) {
+export function ClientEditor({ clientId, section, token, onDelete, theme, toggleTheme }: ClientEditorProps) {
+  const router = useRouter();
   const authFetcher = useCallback(
     (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
     [token]
@@ -114,9 +123,17 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
 
   const { data: response, mutate } = useSWR<ClientResponse>(`/api/admin/clients/${clientId}`, authFetcher);
   const client = response?.client;
-  const [activeSection, setActiveSection] = useState("general");
+  const activeSection = urlToSectionKey(section);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const tabBarRef = useRef<HTMLDivElement>(null);
+
+  const handleSectionChange = useCallback(
+    (sectionKey: string) => {
+      router.replace(`/admin/${clientId}/${sectionKeyToUrl(sectionKey)}`);
+    },
+    [router, clientId]
+  );
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -138,9 +155,8 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
     }
   }, [client]);
 
-  // Build the flat section list from client tabs
-  const contentSections: SectionDef[] = (response?.tabs ?? [])
-    .filter((t) => t.tab_key !== "sales" && t.tab_key !== "activity") // these have dedicated editors
+  // Build the flat section list from client tabs — all tabs, ordered by sort_order
+  const contentSections: SectionDef[] = [...(response?.tabs ?? [])]
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((t) => ({
       key: `tab:${t.tab_key}`,
@@ -151,9 +167,9 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
       tabKey: t.tab_key,
     }));
 
-  // Also add any missing tabs that can be created
+  // Tabs that haven't been created yet — only active tabs (no legacy for new clients)
   const existingTabKeys = new Set((response?.tabs ?? []).map((t) => t.tab_key));
-  const creatableTabKeys = TAB_KEYS.filter((k) => !existingTabKeys.has(k) && k !== "sales" && k !== "activity");
+  const creatableTabKeys = ACTIVE_TAB_KEYS.filter((k) => !existingTabKeys.has(k));
   const creatableSections: SectionDef[] = creatableTabKeys.map((k) => ({
     key: `tab:${k}`,
     label: TAB_LABELS[k] ?? k,
@@ -165,10 +181,8 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
 
   const allSections = [
     ...FIXED_SECTIONS,
-    ...ACTIVITY_SECTIONS,
     ...contentSections,
     ...creatableSections,
-    ...REVENUE_SECTIONS,
     ...AI_SECTIONS,
   ];
 
@@ -192,8 +206,9 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
     });
     await mutate();
     setSaving(false);
-    onSave();
-  }, [clientId, name, slug, pin, clientType, objective, defaultLang, languages, mutate, onSave, token]);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }, [clientId, name, slug, pin, clientType, objective, defaultLang, languages, mutate, token]);
 
   if (!client) {
     return (
@@ -214,7 +229,7 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
         <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-3">
           <div className="flex items-center gap-3">
             <button
-              onClick={onBack}
+              onClick={() => router.push("/admin")}
               className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[var(--adm-surface-2)]"
               style={{ color: "var(--adm-text-secondary)" }}
             >
@@ -255,6 +270,9 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
               // Add a visual divider between groups
               const prevGroup = i > 0 ? allSections[i - 1].group : s.group;
               const showDivider = i > 0 && prevGroup !== s.group;
+              // Show dimmed style for hidden tabs
+              const tabRow = s.tabKey ? response?.tabs.find((t) => t.tab_key === s.tabKey) : null;
+              const isHidden = tabRow ? !tabRow.is_visible : false;
 
               return (
                 <div key={s.key} className="flex items-center">
@@ -263,12 +281,13 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
                   )}
                   <button
                     data-section={s.key}
-                    onClick={() => setActiveSection(s.key)}
+                    onClick={() => handleSectionChange(s.key)}
                     className="flex flex-shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-all"
                     style={{
                       backgroundColor: active ? "var(--adm-surface)" : "transparent",
                       color: active ? "var(--adm-text)" : "var(--adm-text-muted)",
                       boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                      opacity: isHidden && !active ? 0.45 : 1,
                     }}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -329,7 +348,8 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
                 className="flex h-9 items-center gap-1.5 rounded-lg px-5 text-xs font-semibold text-white transition-colors disabled:opacity-50"
                 style={{ backgroundColor: "var(--adm-accent)" }}
               >
-                <Save className="h-3.5 w-3.5" /> {saving ? "Saving..." : "Save Changes"}
+                {saved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+                {saving ? "Saving..." : saved ? "Saved!" : "Save Changes"}
               </button>
             </div>
             <DangerZone clientName={client.name} clientId={clientId} token={token} onReset={() => { mutate(); }} onDelete={onDelete} />
@@ -338,54 +358,18 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
 
         {/* Branding */}
         {activeSection === "branding" && (
-          <BrandingEditor client={client} token={token} onSave={() => { mutate(); onSave(); }} />
+          <BrandingEditor client={client} token={token} onSave={() => mutate()} />
         )}
 
-        {/* Content tabs -- each renders SingleTabEditor inline */}
-        {/* Execution also includes Subscriptions (billing) below the tab editor */}
+        {/* All content tabs */}
         {isContentTab && activeTabKey && (
-          <div className="flex flex-col gap-6">
-            <SingleTabEditor
-              key={activeTabKey}
-              clientId={clientId}
-              token={token}
-              tabKey={activeTabKey}
-              defaultLanguage={client.default_language}
-              availableLanguages={client.available_languages}
-            />
-            {activeTabKey === "execution" && (
-              <>
-                <div className="flex items-center gap-3">
-                  <div className="h-px flex-1" style={{ backgroundColor: "var(--adm-border)" }} />
-                  <span className="flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>
-                    <CreditCard className="h-3.5 w-3.5" /> Recurring Services
-                  </span>
-                  <div className="h-px flex-1" style={{ backgroundColor: "var(--adm-border)" }} />
-                </div>
-                <SubscriptionsManager clientId={clientId} token={token} />
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Activity */}
-        {activeSection === "activity" && (
-          <ActivityEditor clientId={clientId} token={token} />
-        )}
-
-        {/* Automations */}
-        {activeSection === "automations" && (
-          <AutomationsEditor clientId={clientId} clientSlug={client.slug} token={token} />
-        )}
-
-        {/* Sales */}
-        {activeSection === "sales" && (
-          <SalesEditor
+          <TabContent
+            activeTabKey={activeTabKey}
+            tabRow={response?.tabs.find((t) => t.tab_key === activeTabKey)}
             clientId={clientId}
-            clientSlug={client.slug}
-            clientName={client.name}
-            currency={client.currency ?? "DKK"}
+            client={client}
             token={token}
+            onToggled={() => mutate()}
           />
         )}
 
@@ -394,6 +378,135 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
           <KnowledgeBank clientId={clientId} token={token} />
         )}
       </main>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tab content renderer                                               */
+/* ------------------------------------------------------------------ */
+
+function TabContent({
+  activeTabKey, tabRow, clientId, client, token, onToggled,
+}: {
+  activeTabKey: TabKey;
+  tabRow: { id: string; is_visible: boolean } | undefined;
+  clientId: string;
+  client: ClientRow;
+  token: string;
+  onToggled: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-6">
+      {tabRow && (
+        <VisibilityBadge
+          tabId={tabRow.id}
+          isVisible={tabRow.is_visible}
+          tabLabel={TAB_LABELS[activeTabKey] ?? activeTabKey}
+          token={token}
+          clientId={clientId}
+          onToggled={onToggled}
+        />
+      )}
+      {activeTabKey === "sales" && (
+        <SalesEditor
+          clientId={clientId}
+          clientSlug={client.slug}
+          clientName={client.name}
+          currency={client.currency ?? "DKK"}
+          token={token}
+        />
+      )}
+      {activeTabKey === "activity" && (
+        <ActivityEditor clientId={clientId} token={token} />
+      )}
+      {activeTabKey === "automations" && (
+        <AutomationsEditor clientId={clientId} clientSlug={client.slug} token={token} />
+      )}
+      {activeTabKey !== "sales" && activeTabKey !== "activity" && activeTabKey !== "automations" && (
+        <SingleTabEditor
+          key={activeTabKey}
+          clientId={clientId}
+          token={token}
+          tabKey={activeTabKey}
+          defaultLanguage={client.default_language}
+          availableLanguages={client.available_languages}
+        />
+      )}
+      {activeTabKey === "execution" && (
+        <>
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1" style={{ backgroundColor: "var(--adm-border)" }} />
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>
+              <CreditCard className="h-3.5 w-3.5" /> Recurring Services
+            </span>
+            <div className="h-px flex-1" style={{ backgroundColor: "var(--adm-border)" }} />
+          </div>
+          <SubscriptionsManager clientId={clientId} token={token} />
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Visibility badge + toggle                                          */
+/* ------------------------------------------------------------------ */
+
+function VisibilityBadge({
+  tabId, isVisible, tabLabel, token, clientId, onToggled,
+}: {
+  tabId: string; isVisible: boolean; tabLabel: string; token: string; clientId: string; onToggled: () => void;
+}) {
+  const [toggling, setToggling] = useState(false);
+
+  const handleToggle = async () => {
+    setToggling(true);
+    await fetch(`/api/admin/clients/${clientId}/tabs`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ tabId, is_visible: !isVisible }),
+    });
+    onToggled();
+    setToggling(false);
+  };
+
+  return (
+    <div
+      className="flex items-center justify-between rounded-lg border px-4 py-3"
+      style={{
+        borderColor: isVisible ? "var(--adm-border)" : "color-mix(in srgb, var(--adm-danger-text) 40%, transparent)",
+        backgroundColor: isVisible ? "var(--adm-surface)" : "color-mix(in srgb, var(--adm-danger-text) 6%, transparent)",
+      }}
+    >
+      <div className="flex items-center gap-2.5">
+        {isVisible
+          ? <Eye className="h-4 w-4" style={{ color: "var(--adm-success)" }} />
+          : <EyeOff className="h-4 w-4" style={{ color: "var(--adm-danger-text)" }} />}
+        <div>
+          <p className="text-xs font-semibold" style={{ color: "var(--adm-text)" }}>
+            {isVisible ? "Visible to client" : "Hidden from client"}
+          </p>
+          <p className="text-[11px]" style={{ color: "var(--adm-text-muted)" }}>
+            {isVisible
+              ? `The ${tabLabel} tab is shown in the client portal`
+              : `The ${tabLabel} tab is hidden — client cannot see it`}
+          </p>
+        </div>
+      </div>
+      <button
+        onClick={handleToggle}
+        disabled={toggling}
+        className="flex h-7 items-center gap-1.5 rounded-md px-3 text-[11px] font-semibold transition-colors disabled:opacity-50"
+        style={{
+          backgroundColor: isVisible
+            ? "color-mix(in srgb, var(--adm-danger-text) 12%, transparent)"
+            : "color-mix(in srgb, var(--adm-success) 12%, transparent)",
+          color: isVisible ? "var(--adm-danger-text)" : "var(--adm-success)",
+        }}
+      >
+        {toggling ? "..." : isVisible ? "Hide" : "Show"}
+      </button>
     </div>
   );
 }

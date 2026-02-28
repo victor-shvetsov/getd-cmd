@@ -14,6 +14,13 @@ export const TAB_KEYS = [
 ] as const;
 export type TabKey = (typeof TAB_KEYS)[number];
 
+// The 6 active product tabs — new clients are seeded with these only
+export const ACTIVE_TAB_KEYS = ["sales", "demand", "activity", "assets", "automations", "execution"] as const;
+export type ActiveTabKey = (typeof ACTIVE_TAB_KEYS)[number];
+
+// Legacy tabs kept for existing clients but not offered to new ones
+export const LEGACY_TAB_KEYS = ["brief", "marketing_channels", "website"] as const;
+
 // ---- Brief ----
 export interface BriefData {
   service_provider: {
