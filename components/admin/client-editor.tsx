@@ -27,6 +27,7 @@ import {
   FolderOpen,
   ListChecks,
   Activity,
+  Zap,
 } from "lucide-react";
 import { SingleTabEditor, TAB_LABELS } from "@/components/admin/tab-data-editor";
 import { KnowledgeBank } from "@/components/admin/knowledge-bank";
@@ -34,6 +35,7 @@ import { BrandingEditor } from "@/components/admin/branding-editor";
 import { SubscriptionsManager } from "@/components/admin/subscriptions-manager";
 import { SalesEditor } from "@/components/admin/editors/sales-editor";
 import { ActivityEditor } from "@/components/admin/editors/activity-editor";
+import { AutomationsEditor } from "@/components/admin/editors/automations-editor";
 import { AdminThemeToggle } from "./admin-theme-toggle";
 
 /* ------------------------------------------------------------------ */
@@ -89,6 +91,7 @@ const CONTENT_TAB_ICONS: Record<TabKey, React.ElementType> = {
 
 const ACTIVITY_SECTIONS: SectionDef[] = [
   { key: "activity", label: "Activity", icon: Activity, kind: "fixed", group: "activity" },
+  { key: "automations", label: "Automations", icon: Zap, kind: "fixed", group: "activity" },
 ];
 
 const REVENUE_SECTIONS: SectionDef[] = [
@@ -368,6 +371,11 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
         {/* Activity */}
         {activeSection === "activity" && (
           <ActivityEditor clientId={clientId} token={token} />
+        )}
+
+        {/* Automations */}
+        {activeSection === "automations" && (
+          <AutomationsEditor clientId={clientId} token={token} />
         )}
 
         {/* Sales */}
