@@ -312,6 +312,7 @@ export interface ClientRow {
   available_languages: string[];
   currency: string;
   stripe_customer_id: string | null;
+  email_account: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }

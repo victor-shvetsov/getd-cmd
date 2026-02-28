@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse, type NextRequest } from "next/server";
-import { sendEmail } from "@/lib/automations/lead-reply/tools";
+import { sendEmail, extractSmtpConfig } from "@/lib/automations/lead-reply/tools";
 import { sendReviewRequest } from "@/lib/automations/review-collector/tools";
 
 /**
@@ -51,7 +51,7 @@ export async function PATCH(
 
   const supabase = createAdminClient();
 
-  // ── Load the run with automation details ─────────────────────────────
+  // ── Load the run with automation + client email_account ──────────────
   const { data: run, error: runError } = await supabase
     .from("automation_runs")
     .select(`
@@ -61,7 +61,8 @@ export async function PATCH(
       status,
       draft_content,
       payload,
-      automations ( id, automation_key, config, client_id )
+      automations ( id, automation_key, config, client_id ),
+      clients ( email_account )
     `)
     .eq("id", runId)
     .eq("client_id", client_id)          // scope to this client
@@ -78,6 +79,9 @@ export async function PATCH(
     config: Record<string, unknown>;
     client_id: string;
   } | null;
+
+  const clientEmailAccount =
+    (run.clients as { email_account?: Record<string, unknown> | null } | null)?.email_account ?? null;
 
   // Extra ownership check: automation must belong to this client
   if (!automation || automation.client_id !== client_id) {
@@ -112,13 +116,17 @@ export async function PATCH(
       return NextResponse.json({ error: "Missing recipient in draft payload" }, { status: 422 });
     }
 
+    // Prefer client-level email_account for SMTP; fall back to automation config
+    const smtp = extractSmtpConfig(clientEmailAccount ?? cfg);
+    const fromEmail = smtp?.user ?? (cfg.from_email as string) ?? "";
+
     sendResult = await sendEmail({
       to: toEmail,
       subject: subject ? `Re: ${subject}` : "Thanks for reaching out",
       body: finalContent,
       fromName: (cfg.from_name as string) ?? (cfg.owner_name as string) ?? "Victor",
-      fromEmail: cfg.from_email as string,
-    });
+      fromEmail,
+    }, smtp);
 
     // Mark the lead as replied if we have its id
     const leadId = payload.lead_id as string | null;

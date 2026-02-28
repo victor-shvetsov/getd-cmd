@@ -38,6 +38,7 @@ import { SubscriptionsManager } from "@/components/admin/subscriptions-manager";
 import { SalesEditor } from "@/components/admin/editors/sales-editor";
 import { ActivityEditor } from "@/components/admin/editors/activity-editor";
 import { AutomationsEditor } from "@/components/admin/editors/automations-editor";
+import { EmailAccountEditor } from "@/components/admin/editors/email-account-editor";
 import { AdminThemeToggle } from "./admin-theme-toggle";
 
 /* ------------------------------------------------------------------ */
@@ -421,7 +422,20 @@ function TabContent({
         <ActivityEditor clientId={clientId} token={token} />
       )}
       {activeTabKey === "automations" && (
-        <AutomationsEditor clientId={clientId} clientSlug={client.slug} token={token} />
+        <>
+          <AutomationsEditor clientId={clientId} clientSlug={client.slug} token={token} />
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1" style={{ backgroundColor: "var(--adm-border)" }} />
+            <span className="text-[11px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Email Account</span>
+            <div className="h-px flex-1" style={{ backgroundColor: "var(--adm-border)" }} />
+          </div>
+          <EmailAccountEditor
+            clientId={clientId}
+            token={token}
+            emailAccount={client.email_account}
+            onSaved={() => onToggled()}
+          />
+        </>
       )}
       {activeTabKey !== "sales" && activeTabKey !== "activity" && activeTabKey !== "automations" && (
         <SingleTabEditor

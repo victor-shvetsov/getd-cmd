@@ -10,10 +10,15 @@ export function buildSystemPrompt(config: {
   ownerName: string;
   voiceSamples: string[];
   signature: string;
+  customInstructions?: string;
 }): string {
   const samples = config.voiceSamples
     .map((s, i) => `Example ${i + 1}:\n${s}`)
     .join("\n\n");
+
+  const customSection = config.customInstructions?.trim()
+    ? `\n\n## Additional instructions from ${config.ownerName}:\n${config.customInstructions.trim()}`
+    : "";
 
   return `You are a reply assistant for ${config.businessName}, responding on behalf of ${config.ownerName}.
 
@@ -39,5 +44,5 @@ ${config.signature}
 - Do not make up specific details you don't know
 - Do not promise specific prices or timelines
 - Do not write more than 5 sentences
-- Do not include the signature more than once`;
+- Do not include the signature more than once${customSection}`;
 }

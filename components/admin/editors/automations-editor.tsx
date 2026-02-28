@@ -77,7 +77,7 @@ const PRESETS = [
 /*  Main                                                               */
 /* ------------------------------------------------------------------ */
 
-export function AutomationsEditor({ clientId, clientSlug, token }: Props) {
+export function AutomationsEditor({ clientId, token }: Props) {
   const fetcher = useCallback(
     (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
     [token]
@@ -314,7 +314,6 @@ export function AutomationsEditor({ clientId, clientSlug, token }: Props) {
           <AutomationRow
             key={a.id}
             automation={a}
-            clientSlug={clientSlug}
             onUpdate={updateAutomation}
             onDelete={deleteAutomation}
             onResetCounter={resetCounter}
@@ -359,13 +358,11 @@ type RowTab = "info" | "config";
 
 function AutomationRow({
   automation: a,
-  clientSlug,
   onUpdate,
   onDelete,
   onResetCounter,
 }: {
   automation: Automation;
-  clientSlug: string;
   onUpdate: (id: string, u: Partial<Automation>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onResetCounter: (id: string) => Promise<void>;
@@ -607,7 +604,7 @@ function AutomationRow({
           {activeTab === "config" && (
             <div className="px-4 py-3">
               {a.automation_key === "lead_reply" ? (
-                <LeadReplyConfigPanel automation={a} clientSlug={clientSlug} onUpdate={onUpdate} />
+                <LeadReplyConfigPanel automation={a} onUpdate={onUpdate} />
               ) : a.automation_key === "review_collector" ? (
                 <ReviewCollectorConfigPanel automation={a} onUpdate={onUpdate} />
               ) : a.automation_key === "social_poster" ? (
@@ -631,11 +628,9 @@ function AutomationRow({
 
 function LeadReplyConfigPanel({
   automation,
-  clientSlug,
   onUpdate,
 }: {
   automation: Automation;
-  clientSlug: string;
   onUpdate: (id: string, u: Partial<Automation>) => Promise<void>;
 }) {
   const cfg = (automation.config ?? {}) as Record<string, unknown>;
@@ -649,16 +644,19 @@ function LeadReplyConfigPanel({
     Array.isArray(cfg.voice_samples) ? (cfg.voice_samples as string[]).join("\n---\n") : ""
   );
   const [emailExample, setEmailExample] = useState((cfg.email_example as string) ?? "");
+  const [customInstructions, setCustomInstructions] = useState((cfg.custom_instructions as string) ?? "");
+  const [replyDelayMinutes, setReplyDelayMinutes] = useState(
+    typeof cfg.reply_delay_minutes === "number" ? cfg.reply_delay_minutes : 0
+  );
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const inboundDomain = process.env.NEXT_PUBLIC_RESEND_INBOUND_DOMAIN ?? "olkochiex.resend.app";
-  const inboundAddress = `${clientSlug}@${inboundDomain}`;
-
   async function handleSave() {
     setBusy(true);
+    // Spread existing config to preserve any fields not in this UI (e.g. IMAP/SMTP credentials)
     await onUpdate(automation.id, {
       config: {
+        ...cfg,
         from_name: fromName.trim(),
         from_email: fromEmail.trim(),
         owner_name: ownerName.trim(),
@@ -668,7 +666,9 @@ function LeadReplyConfigPanel({
           .split("---")
           .map((s) => s.trim())
           .filter(Boolean),
-        email_example: emailExample.trim(),
+        email_example: emailExample.trim() || undefined,
+        custom_instructions: customInstructions.trim() || undefined,
+        reply_delay_minutes: replyDelayMinutes > 0 ? replyDelayMinutes : undefined,
       },
     } as Partial<Automation>);
     setBusy(false);
@@ -678,12 +678,12 @@ function LeadReplyConfigPanel({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Inbound address info */}
+      {/* Inbound email info */}
       <div className="rounded-lg p-3 text-[10px]" style={{ backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text-secondary)" }}>
         <span className="font-semibold" style={{ color: "var(--adm-text)" }}>Inbound email: </span>
-        Forward or CC contact form emails to{" "}
-        <span className="font-mono select-all" style={{ color: "var(--adm-accent)" }}>{inboundAddress}</span>
-        {" "}— Resend routes them here and triggers this automation.
+        The client&apos;s email account (IMAP/SMTP) is configured in the{" "}
+        <span className="font-semibold" style={{ color: "var(--adm-accent)" }}>Email Account</span>
+        {" "}section below. New emails are checked every 5 minutes via IMAP.
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -714,12 +714,40 @@ function LeadReplyConfigPanel({
 
       <TextareaField
         label="Email Example"
-        hint="Paste one real contact form notification email here. Claude uses this to understand the format."
+        hint="Paste one real contact form notification email here. Claude uses this to understand the format of incoming emails."
         value={emailExample}
         onChange={setEmailExample}
         placeholder={"From: WordPress <noreply@lucaffe.dk>\nSubject: New Contact Form Submission\n\nName: John Smith\nEmail: john@example.com\nMessage: Hi, I wanted to ask about..."}
         rows={6}
       />
+
+      <TextareaField
+        label="Custom Instructions"
+        hint="Extra rules for the AI when writing replies. Added at the end of the system prompt."
+        value={customInstructions}
+        onChange={setCustomInstructions}
+        placeholder={"Always mention free delivery on orders over 500 DKK.\nNever quote specific prices — invite them to call for a quote."}
+        rows={4}
+      />
+
+      {/* Reply delay */}
+      <div>
+        <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>
+          Reply Delay (minutes)
+        </label>
+        <p className="mb-1.5 text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+          Wait this long before sending. Set to 0 to reply immediately. Useful so replies don&apos;t look instant and robotic.
+        </p>
+        <input
+          type="number"
+          min={0}
+          max={120}
+          value={replyDelayMinutes}
+          onChange={(e) => setReplyDelayMinutes(Math.max(0, parseInt(e.target.value, 10) || 0))}
+          className="w-32 rounded-md border px-2.5 py-1.5 text-xs outline-none"
+          style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+        />
+      </div>
 
       <SaveButton busy={busy} saved={saved} onSave={handleSave} />
     </div>

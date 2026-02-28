@@ -31,6 +31,12 @@ export interface ClientConfig {
    * The caller is responsible for storing the draft and awaiting approval.
    */
   draftMode?: boolean;
+  /**
+   * Client-level email connection (IMAP + SMTP credentials).
+   * Set on clients.email_account JSONB — shared across all automations for this client.
+   * Automations use this for sending/receiving; falls back to config fields if absent.
+   */
+  emailAccount?: Record<string, unknown> | null;
 }
 
 export interface AutomationResult {

@@ -9,18 +9,19 @@ const automation = new LeadReplyAutomation();
 /**
  * POST /api/webhooks/inbound-lead
  *
- * Receives inbound email webhooks from Resend.
- * Each client has a dedicated address: [slug]@[RESEND_INBOUND_DOMAIN]
- * e.g. casper@olkochiex.resend.app (Resend subdomain) or casper@leads.getd.dk (custom domain)
+ * Receives inbound email webhooks from Brevo (inbound parsing).
+ * Each client has a dedicated address: [slug]@leads.getd.dk
+ * e.g. lucaffe@leads.getd.dk, casper@leads.getd.dk
  *
- * Configure RESEND_INBOUND_DOMAIN in Vercel env vars and Resend inbound routing settings.
+ * Set up in Brevo: Transactional → Inbound Parsing → add domain + webhook URL.
+ * MX records for leads.getd.dk must point to Brevo's inbound servers.
  *
  * Flow:
- *   1. Extract client slug from the "to" address
+ *   1. Extract client slug from the "To" address
  *   2. Load client + lead_reply automation from DB
  *   3. Use Claude to parse the raw email → clean lead fields
  *   4. Save lead to `leads` table
- *   5. Run the lead_reply automation (Claude generates reply → Resend sends it)
+ *   5. Run the lead_reply automation (Claude generates reply → Brevo sends it)
  *   6. Log the run and increment the counter
  */
 export async function POST(req: NextRequest) {
@@ -31,38 +32,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // ── Parse Resend inbound payload ─────────────────────────────────────
-  // Resend email.received events wrap fields in body.data.
-  // Fall back to top-level fields for direct/test calls.
-  const payload = (body.data as Record<string, unknown>) ?? body;
+  // ── Parse Brevo inbound payload ───────────────────────────────────────
+  // Brevo sends: { To: [{Address, Name}], From: {Address, Name}, Subject, TextContent, HtmlContent }
+  // Also support flat format for direct/test POST calls.
+  let toAddress: string;
+  let fromRaw: string;
+  let subject: string;
+  let emailBody: string;
 
-  const toRaw = payload.to;
-  const toAddress = Array.isArray(toRaw)
-    ? (toRaw[0] as string)
-    : (toRaw as string) ?? "";
-
-  const fromRaw = (payload.from as string) ?? "";
-  const subject = (payload.subject as string) ?? "";
-
-  // Prefer plain text; fall back to HTML.
-  // Resend often omits the body from the webhook payload — fetch it via API if missing.
-  let emailBody = (payload.text as string) || (payload.html as string) || "";
-
-  if (!emailBody) {
-    const emailId = payload.email_id as string | undefined;
-    if (emailId && process.env.RESEND_API_KEY) {
-      try {
-        const res = await fetch(`https://api.resend.com/emails/${emailId}`, {
-          headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-        });
-        if (res.ok) {
-          const email = await res.json() as Record<string, unknown>;
-          emailBody = (email.text as string) || (email.html as string) || "";
-        }
-      } catch (err) {
-        console.error("[inbound-lead] Failed to fetch email body from Resend API:", err);
-      }
-    }
+  if (body.To && Array.isArray(body.To)) {
+    // Brevo inbound format
+    const toObj = (body.To as Array<{ Address?: string }>)[0];
+    toAddress = toObj?.Address ?? "";
+    const fromObj = body.From as { Address?: string } | undefined;
+    fromRaw = fromObj?.Address ?? "";
+    subject = (body.Subject as string) ?? "";
+    emailBody = (body.TextContent as string) || (body.HtmlContent as string) || "";
+  } else {
+    // Flat format for direct/test calls: { to, from, subject, text }
+    const payload = (body.data as Record<string, unknown>) ?? body;
+    const toRaw = payload.to;
+    toAddress = Array.isArray(toRaw) ? (toRaw[0] as string) : (toRaw as string) ?? "";
+    fromRaw = (payload.from as string) ?? "";
+    subject = (payload.subject as string) ?? "";
+    emailBody = (payload.text as string) || (payload.html as string) || "";
   }
 
   if (!toAddress || !emailBody) {
@@ -80,7 +73,7 @@ export async function POST(req: NextRequest) {
   // ── Resolve client ────────────────────────────────────────────────────
   const { data: client, error: clientError } = await supabase
     .from("clients")
-    .select("id, slug")
+    .select("id, slug, email_account")
     .eq("slug", slug)
     .single();
 
@@ -151,7 +144,7 @@ export async function POST(req: NextRequest) {
         subject: parsed.subject || subject,
         message: parsed.message,
       },
-      { client_id: client.id, slug: client.slug, config, draftMode: requireApproval }
+      { client_id: client.id, slug: client.slug, config, draftMode: requireApproval, emailAccount: (client as { email_account?: Record<string, unknown> | null }).email_account ?? null }
     );
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);

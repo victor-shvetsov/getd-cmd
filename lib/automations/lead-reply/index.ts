@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { AutomationRunner, AutomationResult, ClientConfig, TriggerPayload } from "../base";
 import { buildSystemPrompt } from "./workflow";
-import { sendEmail } from "./tools";
+import { sendEmail, extractSmtpConfig } from "./tools";
 
 interface LeadPayload {
   from_email: string;
@@ -44,6 +44,7 @@ export class LeadReplyAutomation implements AutomationRunner {
       ownerName: cfg.owner_name ?? "the owner",
       voiceSamples: cfg.voice_samples,
       signature: cfg.signature ?? "",
+      customInstructions: cfg.custom_instructions as string | undefined,
     });
 
     const client = new Anthropic();
@@ -75,13 +76,18 @@ export class LeadReplyAutomation implements AutomationRunner {
       };
     }
 
+    // Prefer client-level email_account over per-automation config
+    const rawConfig = config.config as Record<string, unknown>;
+    const smtp = extractSmtpConfig(config.emailAccount ?? rawConfig);
+    const fromEmail = smtp?.user ?? cfg.from_email ?? "";
+
     const result = await sendEmail({
       to: lead.from_email,
       subject: lead.subject ? `Re: ${lead.subject}` : "Thanks for reaching out",
       body: replyText,
       fromName: cfg.from_name ?? cfg.owner_name ?? "Victor",
-      fromEmail: cfg.from_email,
-    });
+      fromEmail,
+    }, smtp);
 
     if (!result.success) {
       return { success: false, summary: "", error: `Email send failed: ${result.error}` };

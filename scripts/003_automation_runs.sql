@@ -22,13 +22,15 @@ CREATE TABLE IF NOT EXISTS public.automation_runs (
                       'error',
                       'pending_approval',   -- draft waiting for client review
                       'approved',           -- client approved and message was sent
-                      'discarded'           -- client discarded the draft
+                      'discarded',          -- client discarded the draft
+                      'queued'              -- waiting for reply_delay_minutes to elapse
                     )),
   input_summary   TEXT,          -- short description of what triggered this run
   output_summary  TEXT,          -- short description of what was done
   error           TEXT,          -- error message if status = 'error'
   draft_content   TEXT,          -- generated content when status = 'pending_approval'
-  payload         JSONB,         -- original trigger payload (stored for approve endpoint)
+  payload         JSONB,         -- original trigger payload (stored for approve / queue processing)
+  process_after   TIMESTAMPTZ,   -- when to process a queued run (null = process immediately)
   ran_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

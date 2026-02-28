@@ -75,7 +75,7 @@ STRIPE_SECRET_KEY=<from Vercel env vars>
 STRIPE_WEBHOOK_SECRET=<from Vercel env vars>
 ADMIN_PASSWORD=<from Vercel env vars>
 ANTHROPIC_API_KEY=<from Anthropic console>
-RESEND_API_KEY=<from resend.com>
+BREVO_API_KEY=<from brevo.com — used for sending AND receiving emails>
 AUTOMATION_WEBHOOK_SECRET=<any random string>
 ```
 
