@@ -10,7 +10,7 @@
 
 Victor runs a digital marketing and web development agency in Copenhagen. He does great work for clients but has always struggled with the money side -- collecting payments, setting the right prices, chasing invoices. This app exists to solve that: clients pay upfront through Stripe, embedded directly in the dashboard. No invoices to chase.
 
-Victor is also an n8n automation builder. He's pivoting his BNI (networking group) pitch from "digital marketing agency" to "I build automations that save you time and make you money." The automations are technically simple for him but feel like dark magic to his clients.
+Victor is also an automation builder. He's pivoting his BNI (networking group) pitch from "digital marketing agency" to "I build automations that save you time and make you money." The automations are technically simple for him but feel like dark magic to his clients.
 
 ---
 
@@ -99,7 +99,7 @@ Three core automations Victor offers (universal across most businesses):
 - The on/off toggle gives a sense of control without letting them break anything
 - NO settings, no configuration, no "customize the message" fields. If they need changes, they call Victor.
 - Custom automations Victor builds for specific clients appear here too as additional cards
-- On/off toggles trigger webhooks to n8n to actually enable/disable workflows
+- On/off toggles update the `is_enabled` flag in Supabase; the automation engine checks this before running
 
 ### Tab 6: Execution / Roadmap / Next Steps (The Money Tab)
 
@@ -168,8 +168,69 @@ This is where Victor's cash flow problem dies forever. Instead of sending propos
 - PIN-based authentication (stored in sessionStorage to survive Stripe redirects)
 - Admin panel for Victor to manage all clients, set up execution items, subscriptions, content
 - i18n support for 7 languages (EN, RO, RU, DA, DE, FR, ES)
-- n8n webhook integration for automation on/off toggles
 - Mobile-first responsive design
+
+### Automation Architecture
+
+n8n is **not used**. Automations are fully custom-built, AI-powered, and live entirely within the main Next.js app on Vercel. No separate service, no second language.
+
+**Single deployment model:**
+Everything runs in TypeScript inside the existing Next.js app on Vercel. The WAT philosophy (Workflow + Agent + Tools) is implemented in TypeScript:
+- **Workflow** → a `workflow.ts` file containing the system prompt / SOP for Claude
+- **Agent** → Claude API (`@anthropic-ai/sdk`) reasons through the steps, uses tool calls
+- **Tools** → TypeScript functions that execute deterministically (send email, post to social, update DB)
+
+**How it works:**
+1. An external event triggers a webhook to `/api/automations/[key]/trigger` in the Next.js app
+2. The route validates the request, checks `is_enabled` in Supabase, reads client config
+3. The automation's `run()` function is called — Claude reasons through the workflow, executes tool calls
+4. A tool updates the Supabase counter and logs the run to `automation_runs`
+5. The counter appears in the client dashboard automatically
+
+**Code structure:**
+```
+/lib/automations/
+  base.ts                    ← AutomationRunner interface all automations implement
+  registry.ts                ← { "lead-reply": LeadReply, "social-poster": SocialPoster, ... }
+
+  lead-reply/
+    index.ts                 ← orchestrates the run, implements AutomationRunner
+    workflow.ts              ← system prompt / SOP for Claude
+    tools.ts                 ← sendEmail(), fetchLeadData(), etc.
+
+  social-poster/
+    index.ts
+    workflow.ts
+    tools.ts
+
+  review-collector/
+    index.ts
+    workflow.ts
+    tools.ts
+
+/app/api/automations/[key]/trigger/route.ts   ← receives external webhooks, dispatches
+/app/api/cron/route.ts                         ← scheduled automations (Vercel Cron)
+```
+
+**Each automation is a standalone unit:**
+- Lives in its own folder under `/lib/automations/`
+- Implements a shared `AutomationRunner` interface — consistent, predictable
+- Client-specific config (voice samples, API tokens, signatures) lives in `automations.config` JSONB in Supabase
+- Adding a new automation = new folder + register in `registry.ts` + add DB record. No core system changes.
+- Custom per-client automations follow the exact same pattern
+
+**The on/off toggle:**
+- `is_enabled` field in Supabase `automations` table
+- Toggle in client dashboard updates the DB; the trigger route checks it before running
+- No external webhook system — state is entirely in Supabase
+
+**New DB table: `automation_runs`**
+- Logs every execution: `id, automation_id, client_id, status, input_summary, output_summary, error, ran_at`
+- Powers future "history" views and debugging in admin
+
+**If a long-running automation ever exceeds Vercel's 60s function limit:**
+- Add Inngest (lightweight job queue, integrates natively with Next.js) for that specific automation only
+- The rest of the system stays unchanged
 
 ---
 

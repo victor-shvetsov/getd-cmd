@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * POST /api/webhooks/automation
  * 
- * Inbound webhook for n8n to report automation activity.
+ * Inbound webhook for automation engine to report activity and increment counters.
  * 
  * Body options:
  * 

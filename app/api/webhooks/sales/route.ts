@@ -6,7 +6,7 @@ const WEBHOOK_SECRET = process.env.SALES_WEBHOOK_SECRET ?? "";
 /**
  * POST /api/webhooks/sales
  *
- * n8n webhook endpoint for pushing sales/invoice data from any source.
+ * Webhook endpoint for pushing sales/invoice data from any external source.
  * Accepts a single entry or a batch of entries.
  *
  * ── Authentication ──
@@ -14,13 +14,12 @@ const WEBHOOK_SECRET = process.env.SALES_WEBHOOK_SECRET ?? "";
  *
  * ── Multi-tenant ──
  * Each entry MUST include `client_slug` (the URL slug for the client).
- * The endpoint resolves slug -> client_id internally, so n8n never needs
- * to know internal UUIDs.
+ * The endpoint resolves slug -> client_id internally.
  *
  * ── Deduplication ──
  * If `external_ref` is provided (e.g. invoice number), the endpoint will
  * skip entries that already exist for that client + ref combo. This makes
- * it safe to run n8n on a cron schedule without duplicating data.
+ * it safe to call on a cron schedule without duplicating data.
  *
  * ── Payload (single) ──
  * {

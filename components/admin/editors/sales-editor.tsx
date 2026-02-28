@@ -129,7 +129,7 @@ export function SalesEditor({ clientId, clientSlug, clientName, currency, token 
   // Pipeline section
   const [pipelineOpen, setPipelineOpen] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [n8nFieldsOpen, setN8nFieldsOpen] = useState(false);
+  const [mappingOpen, setMappingOpen] = useState(false);
   const [webhookOpen, setWebhookOpen] = useState(false);
 
   // Sync from API data into local state
@@ -284,7 +284,7 @@ export function SalesEditor({ clientId, clientSlug, clientName, currency, token 
 
   const webhookUrl = typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/sales` : "/api/webhooks/sales";
 
-  const n8nMapping = JSON.stringify({
+  const columnMapping = JSON.stringify({
     client_id: clientId,
     amount: "={{ $json.invoice_amount }}",
     currency: currency || "DKK",
@@ -593,7 +593,7 @@ export function SalesEditor({ clientId, clientSlug, clientName, currency, token 
             <Zap className="h-4 w-4" style={{ color: "var(--adm-accent-text)" }} />
             <h3 className="text-sm font-bold">Data Pipeline</h3>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text-muted)" }}>
-              n8n / Webhook
+              Webhook
             </span>
           </div>
           <ChevronDown className="h-4 w-4 transition-transform" style={{ color: "var(--adm-text-muted)", transform: pipelineOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
@@ -606,9 +606,9 @@ export function SalesEditor({ clientId, clientSlug, clientName, currency, token 
               <p className="mb-2 text-[11px] font-semibold" style={{ color: "var(--adm-accent-text)" }}>How Sales Data Flows</p>
               <div className="flex flex-col gap-1.5">
                 {[
-                  { from: "Accounting Software", to: "n8n", desc: "Cron fetches new invoices" },
-                  { from: "n8n AI Node", to: "Tag source", desc: "AI auto-tags channel" },
-                  { from: "n8n Supabase Node", to: "sales_entries", desc: "Upsert with dedup" },
+                  { from: "Accounting Software", to: "Automation / Cron", desc: "Fetches new invoices" },
+                  { from: "Automation", to: "Tag source", desc: "AI auto-tags channel" },
+                  { from: "Webhook POST", to: "sales_entries", desc: "Upsert with dedup" },
                   { from: "Client opens app", to: "Sees sales", desc: "Tags untagged entries" },
                 ].map((step, i) => (
                   <div key={i} className="flex items-center gap-2 text-[11px]">
@@ -622,11 +622,11 @@ export function SalesEditor({ clientId, clientSlug, clientName, currency, token 
               </div>
             </div>
 
-            {/* n8n Supabase Node */}
+            {/* Direct Supabase insert */}
             <div className="rounded-lg border p-4" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-bg)" }}>
               <div className="mb-3 flex items-center gap-2">
                 <Database className="h-4 w-4" style={{ color: "#3ECF8E" }} />
-                <span className="text-xs font-bold">n8n Supabase Node</span>
+                <span className="text-xs font-bold">Supabase: sales_entries</span>
                 <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "color-mix(in srgb, #3ECF8E 15%, transparent)", color: "#3ECF8E" }}>Primary</span>
               </div>
               <div className="flex flex-col gap-3">
@@ -639,17 +639,17 @@ export function SalesEditor({ clientId, clientSlug, clientName, currency, token 
 
                 {/* Column mapping */}
                 <div className="rounded-md border" style={{ borderColor: "var(--adm-border)" }}>
-                  <button onClick={() => setN8nFieldsOpen(!n8nFieldsOpen)} className="flex w-full items-center justify-between px-3 py-2">
+                  <button onClick={() => setMappingOpen(!mappingOpen)} className="flex w-full items-center justify-between px-3 py-2">
                     <span className="text-[11px] font-semibold">Column Mapping</span>
-                    <ChevronDown className="h-3.5 w-3.5 transition-transform" style={{ color: "var(--adm-text-muted)", transform: n8nFieldsOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+                    <ChevronDown className="h-3.5 w-3.5 transition-transform" style={{ color: "var(--adm-text-muted)", transform: mappingOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
                   </button>
-                  {n8nFieldsOpen && (
+                  {mappingOpen && (
                     <div className="border-t px-3 py-3" style={{ borderColor: "var(--adm-border)" }}>
                       <div className="mb-2 flex justify-end">
-                        <CopyBtn text={n8nMapping} field="mapping" label="Copy JSON" />
+                        <CopyBtn text={columnMapping} field="mapping" label="Copy JSON" />
                       </div>
                       <pre className="overflow-x-auto rounded-md p-3 text-[10px] leading-relaxed" style={{ backgroundColor: "var(--adm-surface)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}>
-                        {n8nMapping}
+                        {columnMapping}
                       </pre>
                     </div>
                   )}
@@ -691,7 +691,7 @@ export function SalesEditor({ clientId, clientSlug, clientName, currency, token 
                 <span className="text-xs font-bold">Source Tags</span>
               </div>
               <p className="mb-2 text-[11px]" style={{ color: "var(--adm-text-muted)" }}>
-                n8n AI node should output one of these for the <code className="font-mono">source</code> column. Send null if unsure.
+                The automation should output one of these for the <code className="font-mono">source</code> column. Send null if unsure.
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {[
@@ -736,7 +736,7 @@ export function SalesEditor({ clientId, clientSlug, clientName, currency, token 
                     <div className="flex items-start gap-2 rounded-md p-3" style={{ backgroundColor: "color-mix(in srgb, var(--adm-accent) 8%, transparent)" }}>
                       <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--adm-accent-text)" }} />
                       <p className="text-[11px] leading-relaxed" style={{ color: "var(--adm-text-secondary)" }}>
-                        No sales data yet. Set up your n8n node to start syncing invoices.
+                        No sales data yet. Connect your accounting software via webhook to start syncing invoices.
                       </p>
                     </div>
                   )}

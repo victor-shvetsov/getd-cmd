@@ -43,7 +43,7 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
   );
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [n8nFieldsOpen, setN8nFieldsOpen] = useState(false);
+  const [mappingOpen, setMappingOpen] = useState(false);
   const [webhookOpen, setWebhookOpen] = useState(false);
   const [sourceTagsOpen, setSourceTagsOpen] = useState(false);
 
@@ -57,8 +57,8 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
     setTimeout(() => setCopiedField(null), 2000);
   }, []);
 
-  // n8n Supabase node column mapping (for copy-paste into n8n)
-  const n8nColumnMapping = JSON.stringify({
+  // Column mapping for external services inserting into sales_entries
+  const columnMapping = JSON.stringify({
     client_id: clientId,
     amount: "={{ $json.invoice_amount }}",
     currency: currency || "DKK",
@@ -126,9 +126,9 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
         </div>
         <div className="flex flex-col gap-2">
           {[
-            { from: "Accounting Software", to: "n8n", desc: "Cron fetches new invoices" },
-            { from: "n8n AI Node", to: "Tag source", desc: "AI auto-tags online/offline/etc." },
-            { from: "n8n Supabase Node", to: "sales_entries", desc: "Upsert with dedup on external_ref" },
+            { from: "Accounting Software", to: "Automation / Cron", desc: "Fetches new invoices" },
+            { from: "Automation", to: "Tag source", desc: "AI auto-tags online/offline/etc." },
+            { from: "Webhook POST", to: "sales_entries", desc: "Upsert with dedup on external_ref" },
             { from: "Client opens app", to: "Sees sales", desc: "Tags untagged entries manually" },
           ].map((step, i) => (
             <div key={i} className="flex items-center gap-2 text-[11px]">
@@ -144,20 +144,20 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
         </div>
       </div>
 
-      {/* ── Primary: Supabase Direct (n8n) ── */}
+      {/* ── Primary: Supabase Direct ── */}
       <div
         className="rounded-lg border p-4"
         style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}
       >
         <div className="mb-1 flex items-center gap-2">
           <Database className="h-4 w-4" style={{ color: "#3ECF8E" }} />
-          <h3 className="text-sm font-semibold">n8n Supabase Node</h3>
+          <h3 className="text-sm font-semibold">Supabase: sales_entries</h3>
           <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "color-mix(in srgb, #3ECF8E 15%, transparent)", color: "#3ECF8E" }}>
             Primary
           </span>
         </div>
         <p className="mb-4 text-xs leading-relaxed" style={{ color: "var(--adm-text-muted)" }}>
-          Use n8n{"'"}s native Supabase node to insert directly into the database. Fastest, simplest, no middleware.
+          Insert directly into the database from any external service. Fastest, simplest, no middleware.
         </p>
 
         <div className="flex flex-col gap-3">
@@ -185,10 +185,10 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
             </p>
           </div>
 
-          {/* Client ID (hardcoded per client in n8n) */}
+          {/* Client ID */}
           <div>
             <label className="mb-1 block text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>
-              Client ID <span className="font-normal">(inject dynamically in n8n loop)</span>
+              Client ID
             </label>
             <div className="flex items-center gap-2">
               <code className="flex-1 truncate rounded-md px-3 py-2 text-[11px] font-mono" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}>
@@ -215,17 +215,17 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
         {/* Column mapping reference (collapsible) */}
         <div className="mt-4 rounded-md border" style={{ borderColor: "var(--adm-border)" }}>
           <button
-            onClick={() => setN8nFieldsOpen(!n8nFieldsOpen)}
+            onClick={() => setMappingOpen(!mappingOpen)}
             className="flex w-full items-center justify-between px-3 py-2.5"
           >
-            <span className="text-[11px] font-semibold">Column Mapping for n8n</span>
+            <span className="text-[11px] font-semibold">Column Mapping</span>
             <ChevronDown
               className="h-3.5 w-3.5 transition-transform"
-              style={{ color: "var(--adm-text-muted)", transform: n8nFieldsOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+              style={{ color: "var(--adm-text-muted)", transform: mappingOpen ? "rotate(180deg)" : "rotate(0deg)" }}
             />
           </button>
 
-          {n8nFieldsOpen && (
+          {mappingOpen && (
             <div className="flex flex-col gap-3 border-t px-3 py-3" style={{ borderColor: "var(--adm-border)" }}>
               {/* Visual column table */}
               <div className="overflow-x-auto">
@@ -261,16 +261,16 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
                 </table>
               </div>
 
-              {/* n8n expression example */}
+              {/* Column mapping example */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-[11px] font-medium" style={{ color: "var(--adm-text-muted)" }}>
-                    n8n expression example
+                    Example mapping
                   </span>
-                  <CopyButton text={n8nColumnMapping} field="mapping" label="Copy Mapping" />
+                  <CopyButton text={columnMapping} field="mapping" label="Copy Mapping" />
                 </div>
                 <pre className="overflow-x-auto rounded-md p-3 text-[10px] leading-relaxed" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", border: "1px solid var(--adm-border)" }}>
-                  {n8nColumnMapping}
+                  {columnMapping}
                 </pre>
                 <p className="mt-1.5 text-[10px]" style={{ color: "var(--adm-text-placeholder)" }}>
                   Replace <code className="font-mono">$json.*</code> expressions with your actual field names from the accounting software node
@@ -368,7 +368,7 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
         {sourceTagsOpen && (
           <div className="border-t px-4 py-4" style={{ borderColor: "var(--adm-border)" }}>
             <p className="mb-3 text-[11px]" style={{ color: "var(--adm-text-muted)" }}>
-              n8n AI node should output one of these exact values for the <code className="font-mono">source</code> column.
+              The automation should output one of these exact values for the <code className="font-mono">source</code> column.
               Send <code className="font-mono">null</code> if unsure -- {clientName} tags it in the app.
             </p>
             <div className="flex flex-wrap gap-2">
@@ -443,7 +443,7 @@ export function IntegrationsEditor({ clientId, clientSlug, clientName, currency,
               >
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--adm-accent-text)" }} />
                 <p className="text-[11px] leading-relaxed" style={{ color: "var(--adm-text-secondary)" }}>
-                  No sales data yet. Set up your n8n Supabase node using the details above to start syncing invoices.
+                  No sales data yet. Connect your accounting software using the details above to start syncing invoices.
                 </p>
               </div>
             )}

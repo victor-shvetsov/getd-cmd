@@ -523,17 +523,16 @@ export interface ActivityEntryRow {
   updated_at: string;
 }
 
-// ---- Automations (n8n workflow toggles + counters) ----
+// ---- Automations (AI-powered, Claude API, toggles + counters) ----
 export interface AutomationRow {
   id: string;
   client_id: string;
   name: string;                   // "Auto-reply to new leads"
   description: string;            // "Sends a personal reply to every new enquiry within 2 minutes"
-  automation_key: string;         // unique key for n8n webhook: "lead_reply", "social_poster", "review_collector"
+  automation_key: string;         // "lead_reply" | "social_poster" | "review_collector"
   is_enabled: boolean;            // on/off toggle state
   counter_label: string;          // "leads replied" | "jobs posted" | "reviews collected"
   counter_value: number;          // current month's count
-  webhook_url: string | null;     // n8n webhook URL for on/off toggle
   sort_order: number;
   created_at: string;
   updated_at: string;

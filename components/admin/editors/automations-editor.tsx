@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import useSWR from "swr";
 import {
   Plus, Trash2, ChevronDown, ChevronUp, Zap, ZapOff,
-  Copy, ExternalLink, RotateCcw, GripVertical, Pencil, Check, X,
+  Copy, RotateCcw, Pencil, Check, X, Settings,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -20,8 +20,8 @@ interface Automation {
   is_enabled: boolean;
   counter_label: string;
   counter_value: number;
-  webhook_url: string | null;
   sort_order: number;
+  config: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -91,7 +91,6 @@ export function AutomationsEditor({ clientId, token }: Props) {
   const [customDesc, setCustomDesc] = useState("");
   const [customLabel, setCustomLabel] = useState("actions completed");
 
-  // Existing automation keys for this client
   const existingKeys = new Set(automations.map((a) => a.automation_key));
 
   /* -- API helpers --------------------------------------------------- */
@@ -177,7 +176,7 @@ export function AutomationsEditor({ clientId, token }: Props) {
             Automations
           </h3>
           <p className="mt-0.5 text-[11px]" style={{ color: "var(--adm-text-secondary)" }}>
-            {automations.length} automation{automations.length !== 1 ? "s" : ""} configured --{" "}
+            {automations.length} automation{automations.length !== 1 ? "s" : ""} configured —{" "}
             {automations.filter((a) => a.is_enabled).length} active
           </p>
         </div>
@@ -185,10 +184,7 @@ export function AutomationsEditor({ clientId, token }: Props) {
           <button
             onClick={() => { setShowPresets(!showPresets); setAddingCustom(false); }}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-colors"
-            style={{
-              backgroundColor: "var(--adm-accent)",
-              color: "white",
-            }}
+            style={{ backgroundColor: "var(--adm-accent)", color: "white" }}
           >
             <Plus className="h-3.5 w-3.5" />
             Add
@@ -230,7 +226,6 @@ export function AutomationsEditor({ clientId, token }: Props) {
               </p>
             )}
 
-            {/* Custom add toggle */}
             <button
               onClick={() => setAddingCustom(!addingCustom)}
               className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-[11px] font-medium transition-colors hover:border-[var(--adm-accent)]"
@@ -241,14 +236,13 @@ export function AutomationsEditor({ clientId, token }: Props) {
             </button>
           </div>
 
-          {/* Custom form */}
           {addingCustom && (
             <div className="mt-3 flex flex-col gap-2 border-t pt-3" style={{ borderColor: "var(--adm-border)" }}>
               <div className="grid grid-cols-2 gap-2">
                 <input
                   value={customKey}
                   onChange={(e) => setCustomKey(e.target.value)}
-                  placeholder="automation_key (e.g. invoice_sender)"
+                  placeholder="automation_key"
                   className="rounded-md border px-2.5 py-1.5 text-xs font-mono outline-none"
                   style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)" }}
                 />
@@ -275,11 +269,7 @@ export function AutomationsEditor({ clientId, token }: Props) {
                 style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)" }}
               />
               <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setAddingCustom(false)}
-                  className="rounded-md px-3 py-1.5 text-[11px] font-medium"
-                  style={{ color: "var(--adm-text-secondary)" }}
-                >
+                <button onClick={() => setAddingCustom(false)} className="rounded-md px-3 py-1.5 text-[11px] font-medium" style={{ color: "var(--adm-text-secondary)" }}>
                   Cancel
                 </button>
                 <button
@@ -298,17 +288,10 @@ export function AutomationsEditor({ clientId, token }: Props) {
 
       {/* Automation list */}
       {automations.length === 0 && !showPresets && (
-        <div
-          className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-12"
-          style={{ borderColor: "var(--adm-border)" }}
-        >
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-12" style={{ borderColor: "var(--adm-border)" }}>
           <ZapOff className="h-8 w-8 opacity-20" />
           <p className="text-xs" style={{ color: "var(--adm-text-secondary)" }}>No automations configured yet</p>
-          <button
-            onClick={() => setShowPresets(true)}
-            className="rounded-lg px-3 py-1.5 text-[11px] font-semibold text-white"
-            style={{ backgroundColor: "var(--adm-accent)" }}
-          >
+          <button onClick={() => setShowPresets(true)} className="rounded-lg px-3 py-1.5 text-[11px] font-semibold text-white" style={{ backgroundColor: "var(--adm-accent)" }}>
             Add first automation
           </button>
         </div>
@@ -326,25 +309,19 @@ export function AutomationsEditor({ clientId, token }: Props) {
         ))}
       </div>
 
-      {/* n8n Integration info */}
+      {/* Counter increment endpoint */}
       {automations.length > 0 && (
-        <div
-          className="rounded-xl border p-4"
-          style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)" }}
-        >
+        <div className="rounded-xl border p-4" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)" }}>
           <p className="mb-2 text-[11px] font-bold" style={{ color: "var(--adm-text)" }}>
-            n8n Webhook Endpoint
+            Counter Increment Endpoint
           </p>
           <p className="mb-2 text-[10px]" style={{ color: "var(--adm-text-secondary)" }}>
-            n8n workflows can increment counters by POSTing to this endpoint.
+            External services can increment counters by POSTing to this endpoint.
             Send <code className="rounded bg-[var(--adm-surface)] px-1 py-0.5 text-[9px] font-mono">{'{ "client_id": "...", "automation_key": "lead_reply" }'}</code> to increment by 1,
             or add <code className="rounded bg-[var(--adm-surface)] px-1 py-0.5 text-[9px] font-mono">{'"increment": 5'}</code> for custom amounts.
           </p>
           <div className="flex items-center gap-2">
-            <code
-              className="flex-1 truncate rounded-md border px-2.5 py-1.5 text-[10px] font-mono"
-              style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text-muted)" }}
-            >
+            <code className="flex-1 truncate rounded-md border px-2.5 py-1.5 text-[10px] font-mono" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text-muted)" }}>
               POST {inboundUrl}
             </code>
             <button
@@ -365,6 +342,8 @@ export function AutomationsEditor({ clientId, token }: Props) {
 /*  Single row                                                         */
 /* ------------------------------------------------------------------ */
 
+type RowTab = "info" | "config";
+
 function AutomationRow({
   automation: a,
   onUpdate,
@@ -377,11 +356,11 @@ function AutomationRow({
   onResetCounter: (id: string) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState<RowTab>("info");
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(a.name);
   const [desc, setDesc] = useState(a.description);
   const [label, setLabel] = useState(a.counter_label);
-  const [webhookUrl, setWebhookUrl] = useState(a.webhook_url ?? "");
   const [counterEdit, setCounterEdit] = useState(String(a.counter_value));
   const [busy, setBusy] = useState(false);
 
@@ -391,7 +370,6 @@ function AutomationRow({
     if (name !== a.name) updates.name = name;
     if (desc !== a.description) updates.description = desc;
     if (label !== a.counter_label) updates.counter_label = label;
-    if (webhookUrl !== (a.webhook_url ?? "")) updates.webhook_url = webhookUrl || null;
     const cv = parseInt(counterEdit, 10);
     if (!isNaN(cv) && cv !== a.counter_value) updates.counter_value = cv;
     if (Object.keys(updates).length > 0) await onUpdate(a.id, updates);
@@ -404,7 +382,6 @@ function AutomationRow({
     setName(a.name);
     setDesc(a.description);
     setLabel(a.counter_label);
-    setWebhookUrl(a.webhook_url ?? "");
     setCounterEdit(String(a.counter_value));
   }
 
@@ -417,26 +394,13 @@ function AutomationRow({
       }}
     >
       {/* Collapsed header */}
-      <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
-      >
+      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div
             className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg"
-            style={{
-              backgroundColor: a.is_enabled
-                ? "color-mix(in srgb, var(--adm-accent) 12%, transparent)"
-                : "var(--adm-surface-2)",
-            }}
+            style={{ backgroundColor: a.is_enabled ? "color-mix(in srgb, var(--adm-accent) 12%, transparent)" : "var(--adm-surface-2)" }}
           >
-            <Zap
-              className="h-3.5 w-3.5"
-              style={{
-                color: a.is_enabled ? "var(--adm-accent)" : "var(--adm-text-muted)",
-                opacity: a.is_enabled ? 1 : 0.4,
-              }}
-            />
+            <Zap className="h-3.5 w-3.5" style={{ color: a.is_enabled ? "var(--adm-accent)" : "var(--adm-text-muted)", opacity: a.is_enabled ? 1 : 0.4 }} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -449,20 +413,11 @@ function AutomationRow({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Counter badge */}
-          <div
-            className="flex items-center gap-1 rounded-md px-2 py-1"
-            style={{ backgroundColor: "var(--adm-surface-2)" }}
-          >
-            <span className="text-[11px] font-bold tabular-nums" style={{ color: "var(--adm-text)" }}>
-              {a.counter_value}
-            </span>
-            <span className="text-[9px]" style={{ color: "var(--adm-text-secondary)" }}>
-              {a.counter_label}
-            </span>
+          <div className="flex items-center gap-1 rounded-md px-2 py-1" style={{ backgroundColor: "var(--adm-surface-2)" }}>
+            <span className="text-[11px] font-bold tabular-nums" style={{ color: "var(--adm-text)" }}>{a.counter_value}</span>
+            <span className="text-[9px]" style={{ color: "var(--adm-text-secondary)" }}>{a.counter_label}</span>
           </div>
 
-          {/* Toggle */}
           <button
             onClick={(e) => { e.stopPropagation(); onUpdate(a.id, { is_enabled: !a.is_enabled }); }}
             className="relative h-5 w-9 flex-shrink-0 rounded-full transition-colors"
@@ -471,10 +426,7 @@ function AutomationRow({
               border: a.is_enabled ? "none" : "1px solid var(--adm-border)",
             }}
           >
-            <div
-              className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all"
-              style={{ left: a.is_enabled ? "calc(100% - 18px)" : "2px" }}
-            />
+            <div className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all" style={{ left: a.is_enabled ? "calc(100% - 18px)" : "2px" }} />
           </button>
 
           {expanded ? (
@@ -487,129 +439,329 @@ function AutomationRow({
 
       {/* Expanded detail */}
       {expanded && (
-        <div className="border-t px-4 py-3" style={{ borderColor: "var(--adm-border)" }}>
-          {!editing ? (
-            <div className="flex flex-col gap-3">
-              <p className="text-[11px]" style={{ color: "var(--adm-text-secondary)" }}>{a.description || "No description"}</p>
+        <div className="border-t" style={{ borderColor: "var(--adm-border)" }}>
+          {/* Tabs */}
+          <div className="flex border-b" style={{ borderColor: "var(--adm-border)" }}>
+            {(["info", "config"] as RowTab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => { setActiveTab(tab); setEditing(false); }}
+                className="px-4 py-2 text-[11px] font-semibold capitalize transition-colors"
+                style={{
+                  color: activeTab === tab ? "var(--adm-accent)" : "var(--adm-text-muted)",
+                  borderBottom: activeTab === tab ? "2px solid var(--adm-accent)" : "2px solid transparent",
+                  marginBottom: -1,
+                }}
+              >
+                {tab === "config" ? (
+                  <span className="flex items-center gap-1"><Settings className="h-3 w-3" /> Configure</span>
+                ) : "Info"}
+              </button>
+            ))}
+          </div>
 
-              <div className="flex flex-wrap gap-3 text-[10px]">
-                <div>
-                  <span style={{ color: "var(--adm-text-muted)" }}>Webhook: </span>
-                  <span className="font-mono" style={{ color: a.webhook_url ? "var(--adm-accent-text)" : "var(--adm-text-muted)" }}>
-                    {a.webhook_url || "Not set"}
-                  </span>
+          {/* Info tab */}
+          {activeTab === "info" && (
+            <div className="px-4 py-3">
+              {!editing ? (
+                <div className="flex flex-col gap-3">
+                  <p className="text-[11px]" style={{ color: "var(--adm-text-secondary)" }}>{a.description || "No description"}</p>
+                  <div className="flex flex-wrap gap-3 text-[10px]">
+                    <div>
+                      <span style={{ color: "var(--adm-text-muted)" }}>Order: </span>
+                      <span style={{ color: "var(--adm-text)" }}>{a.sort_order}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: "var(--adm-text-muted)" }}>Updated: </span>
+                      <span style={{ color: "var(--adm-text)" }}>{new Date(a.updated_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setEditing(true)}
+                      className="flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-medium transition-colors hover:bg-[var(--adm-surface-2)]"
+                      style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
+                    >
+                      <Pencil className="h-3 w-3" /> Edit
+                    </button>
+                    <button
+                      onClick={() => onResetCounter(a.id)}
+                      className="flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-medium transition-colors hover:bg-[var(--adm-surface-2)]"
+                      style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
+                    >
+                      <RotateCcw className="h-3 w-3" /> Reset counter
+                    </button>
+                    <button
+                      onClick={() => { if (confirm("Delete this automation?")) onDelete(a.id); }}
+                      className="flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-medium text-red-500 transition-colors hover:bg-red-50"
+                      style={{ borderColor: "color-mix(in srgb, red 20%, var(--adm-border))" }}
+                    >
+                      <Trash2 className="h-3 w-3" /> Delete
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <span style={{ color: "var(--adm-text-muted)" }}>Order: </span>
-                  <span style={{ color: "var(--adm-text)" }}>{a.sort_order}</span>
+              ) : (
+                <div className="flex flex-col gap-2.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Name</label>
+                      <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Counter Label</label>
+                      <input value={label} onChange={(e) => setLabel(e.target.value)} className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Description</label>
+                    <input value={desc} onChange={(e) => setDesc(e.target.value)} className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Counter Value</label>
+                    <input type="number" value={counterEdit} onChange={(e) => setCounterEdit(e.target.value)} className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }} />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button onClick={handleCancel} className="flex items-center gap-1 rounded-md px-3 py-1.5 text-[11px] font-medium" style={{ color: "var(--adm-text-secondary)" }}>
+                      <X className="h-3 w-3" /> Cancel
+                    </button>
+                    <button onClick={handleSave} disabled={busy} className="flex items-center gap-1 rounded-md px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--adm-accent)" }}>
+                      <Check className="h-3 w-3" /> Save
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <span style={{ color: "var(--adm-text-muted)" }}>Updated: </span>
-                  <span style={{ color: "var(--adm-text)" }}>{new Date(a.updated_at).toLocaleDateString()}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setEditing(true)}
-                  className="flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-medium transition-colors hover:bg-[var(--adm-surface-2)]"
-                  style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
-                >
-                  <Pencil className="h-3 w-3" /> Edit
-                </button>
-                <button
-                  onClick={() => onResetCounter(a.id)}
-                  className="flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-medium transition-colors hover:bg-[var(--adm-surface-2)]"
-                  style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
-                >
-                  <RotateCcw className="h-3 w-3" /> Reset counter
-                </button>
-                <button
-                  onClick={() => { if (confirm("Delete this automation?")) onDelete(a.id); }}
-                  className="flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-medium text-red-500 transition-colors hover:bg-red-50"
-                  style={{ borderColor: "color-mix(in srgb, red 20%, var(--adm-border))" }}
-                >
-                  <Trash2 className="h-3 w-3" /> Delete
-                </button>
-              </div>
+              )}
             </div>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Name</label>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none"
-                    style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Counter Label</label>
-                  <input
-                    value={label}
-                    onChange={(e) => setLabel(e.target.value)}
-                    className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none"
-                    style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Description</label>
-                <input
-                  value={desc}
-                  onChange={(e) => setDesc(e.target.value)}
-                  className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none"
-                  style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>
-                    Outbound Webhook URL
-                    <span className="ml-1 font-normal" style={{ color: "var(--adm-text-secondary)" }}>(fires on toggle)</span>
-                  </label>
-                  <input
-                    value={webhookUrl}
-                    onChange={(e) => setWebhookUrl(e.target.value)}
-                    placeholder="https://n8n.example.com/webhook/..."
-                    className="w-full rounded-md border px-2.5 py-1.5 text-xs font-mono outline-none"
-                    style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Counter Value</label>
-                  <input
-                    type="number"
-                    value={counterEdit}
-                    onChange={(e) => setCounterEdit(e.target.value)}
-                    className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none"
-                    style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-1">
-                <button
-                  onClick={handleCancel}
-                  className="flex items-center gap-1 rounded-md px-3 py-1.5 text-[11px] font-medium"
-                  style={{ color: "var(--adm-text-secondary)" }}
-                >
-                  <X className="h-3 w-3" /> Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={busy}
-                  className="flex items-center gap-1 rounded-md px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50"
-                  style={{ backgroundColor: "var(--adm-accent)" }}
-                >
-                  <Check className="h-3 w-3" /> Save
-                </button>
-              </div>
+          )}
+
+          {/* Config tab */}
+          {activeTab === "config" && (
+            <div className="px-4 py-3">
+              {a.automation_key === "lead_reply" ? (
+                <LeadReplyConfigPanel automation={a} onUpdate={onUpdate} />
+              ) : a.automation_key === "review_collector" ? (
+                <ReviewCollectorConfigPanel automation={a} onUpdate={onUpdate} />
+              ) : (
+                <p className="text-[11px]" style={{ color: "var(--adm-text-muted)" }}>
+                  No configurable settings for this automation type.
+                </p>
+              )}
             </div>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Lead Reply config panel                                            */
+/* ------------------------------------------------------------------ */
+
+function LeadReplyConfigPanel({
+  automation,
+  onUpdate,
+}: {
+  automation: Automation;
+  onUpdate: (id: string, u: Partial<Automation>) => Promise<void>;
+}) {
+  const cfg = (automation.config ?? {}) as Record<string, unknown>;
+
+  const [fromName, setFromName] = useState((cfg.from_name as string) ?? "");
+  const [fromEmail, setFromEmail] = useState((cfg.from_email as string) ?? "");
+  const [ownerName, setOwnerName] = useState((cfg.owner_name as string) ?? "");
+  const [businessName, setBusinessName] = useState((cfg.business_name as string) ?? "");
+  const [signature, setSignature] = useState((cfg.signature as string) ?? "");
+  const [voiceSamples, setVoiceSamples] = useState(
+    Array.isArray(cfg.voice_samples) ? (cfg.voice_samples as string[]).join("\n---\n") : ""
+  );
+  const [emailExample, setEmailExample] = useState((cfg.email_example as string) ?? "");
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function handleSave() {
+    setBusy(true);
+    await onUpdate(automation.id, {
+      config: {
+        from_name: fromName.trim(),
+        from_email: fromEmail.trim(),
+        owner_name: ownerName.trim(),
+        business_name: businessName.trim(),
+        signature: signature.trim(),
+        voice_samples: voiceSamples
+          .split("---")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        email_example: emailExample.trim(),
+      },
+    } as Partial<Automation>);
+    setBusy(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Inbound address info */}
+      <div className="rounded-lg p-3 text-[10px]" style={{ backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text-secondary)" }}>
+        <span className="font-semibold" style={{ color: "var(--adm-text)" }}>Inbound email: </span>
+        Forward or CC contact form emails to{" "}
+        <span className="font-mono" style={{ color: "var(--adm-accent)" }}>[client-slug]@leads.getd.dk</span>
+        {" "}— Resend will route them here and trigger this automation.
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="From Name" value={fromName} onChange={setFromName} placeholder="Thomas Christensen" />
+        <Field label="From Email" value={fromEmail} onChange={setFromEmail} placeholder="thomas@lucaffe.dk" type="email" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Owner Name" value={ownerName} onChange={setOwnerName} placeholder="Thomas" />
+        <Field label="Business Name" value={businessName} onChange={setBusinessName} placeholder="La Caffè" />
+      </div>
+
+      <TextareaField
+        label="Signature"
+        value={signature}
+        onChange={setSignature}
+        placeholder={"Med venlig hilsen\nThomas Christensen\nLa Caffè · +45 12 34 56 78"}
+        rows={3}
+      />
+
+      <TextareaField
+        label="Voice Samples"
+        hint="Paste 1–3 example replies Thomas would write. Separate samples with --- on its own line."
+        value={voiceSamples}
+        onChange={setVoiceSamples}
+        placeholder={"Hej! Tak fordi du skriver – vi er altid glade for nye gæster.\n---\nSå hyggeligt at høre fra dig! Vi har plads fra fredag."}
+        rows={6}
+      />
+
+      <TextareaField
+        label="Email Example"
+        hint="Paste one real contact form notification email here. Claude uses this to understand the format."
+        value={emailExample}
+        onChange={setEmailExample}
+        placeholder={"From: WordPress <noreply@lucaffe.dk>\nSubject: New Contact Form Submission\n\nName: John Smith\nEmail: john@example.com\nMessage: Hi, I wanted to ask about..."}
+        rows={6}
+      />
+
+      <div className="flex justify-end pt-1">
+        <button
+          onClick={handleSave}
+          disabled={busy}
+          className="flex items-center gap-1.5 rounded-md px-4 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50 transition-colors"
+          style={{ backgroundColor: saved ? "#22c55e" : "var(--adm-accent)" }}
+        >
+          {saved ? <><Check className="h-3 w-3" /> Saved</> : <><Check className="h-3 w-3" /> Save config</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Review Collector config panel                                      */
+/* ------------------------------------------------------------------ */
+
+function ReviewCollectorConfigPanel({
+  automation,
+  onUpdate,
+}: {
+  automation: Automation;
+  onUpdate: (id: string, u: Partial<Automation>) => Promise<void>;
+}) {
+  const cfg = (automation.config ?? {}) as Record<string, unknown>;
+
+  const [fromName, setFromName] = useState((cfg.from_name as string) ?? "");
+  const [fromEmail, setFromEmail] = useState((cfg.from_email as string) ?? "");
+  const [reviewUrl, setReviewUrl] = useState((cfg.review_url as string) ?? "");
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function handleSave() {
+    setBusy(true);
+    await onUpdate(automation.id, {
+      config: {
+        from_name: fromName.trim(),
+        from_email: fromEmail.trim(),
+        review_url: reviewUrl.trim(),
+      },
+    } as Partial<Automation>);
+    setBusy(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="From Name" value={fromName} onChange={setFromName} placeholder="Thomas Christensen" />
+        <Field label="From Email" value={fromEmail} onChange={setFromEmail} placeholder="thomas@lucaffe.dk" type="email" />
+      </div>
+      <Field label="Google Review URL" value={reviewUrl} onChange={setReviewUrl} placeholder="https://g.page/r/..." />
+      <div className="flex justify-end pt-1">
+        <button
+          onClick={handleSave}
+          disabled={busy}
+          className="flex items-center gap-1.5 rounded-md px-4 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50 transition-colors"
+          style={{ backgroundColor: saved ? "#22c55e" : "var(--adm-accent)" }}
+        >
+          {saved ? <><Check className="h-3 w-3" /> Saved</> : <><Check className="h-3 w-3" /> Save config</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Shared field components                                            */
+/* ------------------------------------------------------------------ */
+
+function Field({
+  label, value, onChange, placeholder, type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none"
+        style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+      />
+    </div>
+  );
+}
+
+function TextareaField({
+  label, hint, value, onChange, placeholder, rows = 4,
+}: {
+  label: string;
+  hint?: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>{label}</label>
+      {hint && <p className="mb-1 text-[10px]" style={{ color: "var(--adm-text-muted)" }}>{hint}</p>}
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none resize-y font-mono"
+        style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+      />
     </div>
   );
 }
