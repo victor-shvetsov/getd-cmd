@@ -32,16 +32,19 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Parse Resend inbound payload ─────────────────────────────────────
-  // "to" may be a string or array depending on Resend version
-  const toRaw = body.to;
+  // Resend email.received events wrap fields in body.data.
+  // Fall back to top-level fields for direct/test calls.
+  const payload = (body.data as Record<string, unknown>) ?? body;
+
+  const toRaw = payload.to;
   const toAddress = Array.isArray(toRaw)
     ? (toRaw[0] as string)
     : (toRaw as string) ?? "";
 
-  const fromRaw = (body.from as string) ?? "";
-  const subject = (body.subject as string) ?? "";
+  const fromRaw = (payload.from as string) ?? "";
+  const subject = (payload.subject as string) ?? "";
   // Prefer plain text; fall back to HTML
-  const emailBody = (body.text as string) || (body.html as string) || "";
+  const emailBody = (payload.text as string) || (payload.html as string) || "";
 
   if (!toAddress || !emailBody) {
     return NextResponse.json({ error: "Missing 'to' or email body" }, { status: 400 });
