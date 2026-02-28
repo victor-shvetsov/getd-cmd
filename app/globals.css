@@ -119,6 +119,15 @@
   }
 }
 
+/* Hide scrollbar but keep scrolling */
+html {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar {
+  display: none;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

@@ -54,10 +54,12 @@ function ProgressRing({
   percent,
   size = 72,
   stroke = 5,
+  liveLabel = "live",
 }: {
   percent: number;
   size?: number;
   stroke?: number;
+  liveLabel?: string;
 }) {
   const radius = (size - stroke) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -90,7 +92,7 @@ function ProgressRing({
       </svg>
       <div className="absolute flex flex-col items-center">
         <span className="text-sm font-bold leading-none">{percent}%</span>
-        <span className="mt-0.5 text-[7px] uppercase tracking-wider opacity-40">live</span>
+        <span className="mt-0.5 text-[7px] uppercase tracking-wider opacity-40">{liveLabel}</span>
       </div>
     </div>
   );
@@ -108,7 +110,7 @@ function StatsBar({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <ProgressRing percent={stats.progressPercent} />
+      <ProgressRing percent={stats.progressPercent} liveLabel={t("website.live", lang, translations)} />
       <div className="flex flex-1 flex-col gap-1.5">
         {/* Status row breakdown */}
         <div className="flex items-center gap-1">
@@ -156,14 +158,14 @@ function StatsBar({
         </div>
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-          <LegendDot color="#059669" label={t("website.live", lang, translations) || "Live"} count={stats.live} />
-          <LegendDot color="var(--client-primary, #3b82f6)" label={t("website.in_progress", lang, translations) || "In Progress"} count={stats.inProgress} />
-          <LegendDot color="#94a3b8" label={t("website.planned", lang, translations) || "Planned"} count={stats.planned} />
+          <LegendDot color="#059669" label={t("website.live", lang, translations)} count={stats.live} />
+          <LegendDot color="var(--client-primary, #3b82f6)" label={t("website.in_progress", lang, translations)} count={stats.inProgress} />
+          <LegendDot color="#94a3b8" label={t("website.planned", lang, translations)} count={stats.planned} />
         </div>
         {/* Volume */}
         <div className="flex items-baseline gap-1">
           <span className="text-lg font-bold leading-none">{fmtVol(stats.totalVolume)}</span>
-          <span className="text-[9px] opacity-40">{t("website.monthly_searches", lang, translations) || "monthly searches"}</span>
+          <span className="text-[9px] opacity-40">{t("website.monthly_searches", lang, translations)}</span>
         </div>
       </div>
     </div>
@@ -223,7 +225,7 @@ function TreeBranch({
             /{node.segment}
           </span>
           <span className="text-[10px] opacity-30">
-            {node.total_pages} pages -- {fmtVol(node.total_volume)}/mo
+            {node.total_pages} {t("website.pages_count", lang, translations)} -- {fmtVol(node.total_volume)}{t("demand.per_month_short", lang, translations)}
           </span>
           <ChevronDown
             className="ml-auto h-3 w-3 transition-transform"
@@ -439,7 +441,7 @@ function PageDetail({
             className="rounded px-1.5 py-0.5 text-[9px] font-bold"
             style={{ backgroundColor: "#fef3c7", color: "#92400e" }}
           >
-            Priority
+            P1
           </span>
         )}
       </div>
@@ -453,19 +455,19 @@ function PageDetail({
         }}
       >
         <InfoRow
-          label={t("website.primary_keyword", lang, translations) || "Primary Keyword"}
+          label={t("website.primary_keyword", lang, translations)}
           value={page.primary_keyword}
         />
         <InfoRow
-          label={t("website.search_volume", lang, translations) || "Search Volume"}
-          value={`${page.search_volume.toLocaleString()}/mo`}
+          label={t("website.search_volume", lang, translations)}
+          value={`${page.search_volume.toLocaleString()}${t("demand.per_month_short", lang, translations)}`}
         />
         <InfoRow
-          label={t("website.cluster", lang, translations) || "Cluster"}
+          label={t("website.cluster", lang, translations)}
           value={page.cluster_name}
         />
         <InfoRow
-          label={t("website.full_url", lang, translations) || "URL"}
+          label={t("website.full_url", lang, translations)}
           value={page.full_url_path}
           mono
         />
@@ -490,7 +492,7 @@ function PageDetail({
           ))}
           {page.secondary_keywords.length > 6 && (
             <span className="px-1 text-[9px] opacity-30">
-              +{page.secondary_keywords.length - 6} more
+              +{page.secondary_keywords.length - 6} {t("website.more_keywords", lang, translations)}
             </span>
           )}
         </div>
@@ -502,14 +504,15 @@ function PageDetail({
           href={page.full_url_path.startsWith("http") ? page.full_url_path : `#`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 self-start rounded-md px-2 py-1 text-[10px] font-semibold transition-opacity hover:opacity-80"
+          className="inline-flex items-center gap-1 self-start px-2 py-1 text-[10px] font-semibold transition-opacity hover:opacity-80"
           style={{
             backgroundColor: "var(--client-primary, #3b82f6)12",
             color: "var(--client-primary, #3b82f6)",
+            borderRadius: "calc(var(--client-radius, 0.75rem) * 0.5)",
           }}
         >
           <ExternalLink className="h-3 w-3" />
-          {t("website.open_link", lang, translations) || "View Page"}
+          {t("website.open_link", lang, translations)}
         </a>
       )}
     </div>
@@ -586,7 +589,7 @@ export function WebsiteTab({ data, baseData, lang, translations }: Props) {
     <div className="flex flex-col gap-4 px-4 py-3">
       {/* Header */}
       <h2 className="text-[11px] font-bold uppercase tracking-wider opacity-45">
-        {t("website.website_architecture", lang, translations) || "Website Architecture"}
+        {t("website.website_architecture", lang, translations)}
       </h2>
 
       {/* Stats overview */}
@@ -609,7 +612,7 @@ export function WebsiteTab({ data, baseData, lang, translations }: Props) {
         }}
       >
         <span className="mb-2 block text-[9px] font-bold uppercase tracking-wider opacity-30">
-          {t("website.page_types", lang, translations) || "Page Types"}
+          {t("website.page_types", lang, translations)}
         </span>
         <TypeDistribution stats={stats} />
       </div>
@@ -619,11 +622,12 @@ export function WebsiteTab({ data, baseData, lang, translations }: Props) {
         <div className="flex items-center gap-1 overflow-x-auto">
           <button
             onClick={() => setActiveLocation("all")}
-            className="flex-shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold transition-colors"
+            className="flex-shrink-0 px-2.5 py-1 text-[10px] font-semibold transition-colors"
             style={{
               backgroundColor: activeLocation === "all" ? "var(--client-primary, #3b82f6)" : "var(--surface-1)",
               color: activeLocation === "all" ? "#fff" : "inherit",
               opacity: activeLocation === "all" ? 1 : 0.5,
+              borderRadius: "calc(var(--client-radius, 0.75rem) * 0.5)",
             }}
           >
             All
@@ -632,11 +636,12 @@ export function WebsiteTab({ data, baseData, lang, translations }: Props) {
             <button
               key={seg}
               onClick={() => setActiveLocation(seg)}
-              className="flex-shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold transition-colors"
+              className="flex-shrink-0 px-2.5 py-1 text-[10px] font-semibold transition-colors"
               style={{
                 backgroundColor: activeLocation === seg ? "var(--client-primary, #3b82f6)" : "var(--surface-1)",
                 color: activeLocation === seg ? "#fff" : "inherit",
                 opacity: activeLocation === seg ? 1 : 0.5,
+                borderRadius: "calc(var(--client-radius, 0.75rem) * 0.5)",
               }}
             >
               /{seg}
@@ -655,10 +660,10 @@ export function WebsiteTab({ data, baseData, lang, translations }: Props) {
       >
         <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "var(--surface-2)" }}>
           <span className="text-[10px] font-bold uppercase tracking-wider opacity-35">
-            {t("website.sitemap", lang, translations) || "Sitemap"}
+            {t("website.sitemap", lang, translations)}
           </span>
           <span className="text-[9px] opacity-25">
-            {stats.total} {stats.total === 1 ? "page" : "pages"}
+            {stats.total} {t("website.pages_count", lang, translations)}
           </span>
         </div>
 

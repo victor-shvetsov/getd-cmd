@@ -107,6 +107,28 @@ export async function PATCH(req: NextRequest) {
 }
 
 /**
+ * DELETE /api/sales?id=xxx -- delete a sale entry (admin)
+ */
+export async function DELETE(req: NextRequest) {
+  const id = req.nextUrl.searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ error: "id required" }, { status: 400 });
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("sales_entries")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+/**
  * POST /api/sales -- manually add a sale entry (fallback)
  * Body: { clientId, amount, categoryName?, customerName?, description?, note?, source?, currency?, soldAt? }
  */

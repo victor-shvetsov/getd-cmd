@@ -163,14 +163,6 @@ function getPaceBg(revenuePct: number, timePct: number): string {
   return "rgba(239,68,68,0.06)";
 }
 
-function getSupabaseTableUrl(): string | null {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!base) return null;
-  // Supabase project URL format: https://<project-ref>.supabase.co
-  const match = base.match(/https:\/\/([^.]+)\.supabase\.co/);
-  if (!match) return null;
-  return `https://supabase.com/dashboard/project/${match[1]}/editor/sales_entries`;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Progress Ring                                                      */
@@ -604,7 +596,6 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
   const byCategory = data?.by_category ?? [];
   const bySource = data?.by_source ?? {};
   const categories = data?.product_categories ?? [];
-  const supabaseUrl = useMemo(() => getSupabaseTableUrl(), []);
 
   // Swipe
   const touchStartX = useRef(0);
@@ -808,20 +799,6 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
             <SaleRow key={entry.id} entry={entry} currency={currency} onTag={handleTag} lang={lang} translations={tx} />
           ))}
         </div>
-      )}
-
-      {/* ---- SUPABASE SHORTCUT ---- */}
-      {supabaseUrl && (
-        <a
-          href={supabaseUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] font-medium opacity-30 transition-opacity hover:opacity-60"
-          style={{ borderRadius: R_SM, border: "1px dashed var(--surface-3, #ddd)" }}
-        >
-          <ExternalLink className="h-3 w-3" />
-          <span>Open sales_entries in Supabase</span>
-        </a>
       )}
 
       {/* ---- EMPTY STATE ---- */}

@@ -38,6 +38,7 @@ export function ReportView({ config }: ReportViewProps) {
   });
   const [dragOffset, setDragOffset] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [trackHeight, setTrackHeight] = useState<number | undefined>(undefined);
 
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
@@ -253,6 +254,24 @@ export function ReportView({ config }: ReportViewProps) {
     };
   }, [activeIndex, visibleTabs.length, goTo]);
 
+  // Measure the active panel so the track height matches only that panel's content
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const panel = track.children[activeIndex] as HTMLElement | undefined;
+    if (!panel) return;
+
+    const measure = () => {
+      const h = panel.scrollHeight;
+      setTrackHeight(h);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(panel);
+    return () => ro.disconnect();
+  }, [activeIndex]);
+
   // Scroll to top on tab change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -372,8 +391,9 @@ export function ReportView({ config }: ReportViewProps) {
       >
         <div
           ref={trackRef}
-          className="flex"
+          className="flex items-start"
           style={{
+            height: trackHeight ? `${trackHeight}px` : undefined,
             transform: `translateX(${translateX}px)`,
             transition: isAnimating ? "transform 340ms cubic-bezier(0.25, 1, 0.5, 1)" : "none",
             willChange: "transform",
@@ -388,7 +408,6 @@ export function ReportView({ config }: ReportViewProps) {
             <div
               key={tabKey}
               className="w-screen flex-shrink-0"
-              style={{ minHeight: "calc(100dvh - 8.5rem)" }}
             >
               <div className="mx-auto max-w-lg">
                 {/* Only render adjacent + active tabs to save memory */}
