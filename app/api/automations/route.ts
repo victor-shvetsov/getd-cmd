@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAdminRequest } from "@/lib/admin-auth";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
@@ -62,11 +63,14 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * PATCH /api/automations -- update any fields on an automation
+ * PATCH /api/automations -- update any fields on an automation (admin only)
  * Body: { id, ...updates }
- * Supports: name, description, automation_key, is_enabled, counter_label, counter_value, sort_order
+ * Supports: name, description, automation_key, is_enabled, counter_label, counter_value, sort_order, config
  */
 export async function PATCH(req: NextRequest) {
+  if (!isAdminRequest(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const body = await req.json();
   const { id, automationId, ...updates } = body;
 
@@ -98,9 +102,12 @@ export async function PATCH(req: NextRequest) {
 }
 
 /**
- * DELETE /api/automations?id=xxx
+ * DELETE /api/automations?id=xxx (admin only)
  */
 export async function DELETE(req: NextRequest) {
+  if (!isAdminRequest(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const id = req.nextUrl.searchParams.get("id");
   if (!id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });

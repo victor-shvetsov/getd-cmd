@@ -190,14 +190,14 @@ export function AutomationsTab({ lang, translations: tr, clientId }: Automations
 
   const handleToggle = useCallback(
     async (automationId: string, enabled: boolean) => {
-      await fetch("/api/automations", {
-        method: "PATCH",
+      await fetch("/api/automations/toggle", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ automationId, enabled }),
+        body: JSON.stringify({ automation_id: automationId, client_id: clientId, is_enabled: enabled }),
       });
       mutate();
     },
-    [mutate]
+    [clientId, mutate]
   );
 
   if (isLoading) {

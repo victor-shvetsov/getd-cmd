@@ -375,7 +375,7 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
 
         {/* Automations */}
         {activeSection === "automations" && (
-          <AutomationsEditor clientId={clientId} token={token} />
+          <AutomationsEditor clientId={clientId} clientSlug={client.slug} token={token} />
         )}
 
         {/* Sales */}

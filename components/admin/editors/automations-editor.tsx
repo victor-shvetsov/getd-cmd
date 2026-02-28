@@ -28,6 +28,7 @@ interface Automation {
 
 interface Props {
   clientId: string;
+  clientSlug: string;
   token: string;
 }
 
@@ -72,7 +73,7 @@ const PRESETS = [
 /*  Main                                                               */
 /* ------------------------------------------------------------------ */
 
-export function AutomationsEditor({ clientId, token }: Props) {
+export function AutomationsEditor({ clientId, clientSlug, token }: Props) {
   const fetcher = useCallback(
     (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
     [token]
@@ -302,6 +303,7 @@ export function AutomationsEditor({ clientId, token }: Props) {
           <AutomationRow
             key={a.id}
             automation={a}
+            clientSlug={clientSlug}
             onUpdate={updateAutomation}
             onDelete={deleteAutomation}
             onResetCounter={resetCounter}
@@ -346,11 +348,13 @@ type RowTab = "info" | "config";
 
 function AutomationRow({
   automation: a,
+  clientSlug,
   onUpdate,
   onDelete,
   onResetCounter,
 }: {
   automation: Automation;
+  clientSlug: string;
   onUpdate: (id: string, u: Partial<Automation>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onResetCounter: (id: string) => Promise<void>;
@@ -537,9 +541,11 @@ function AutomationRow({
           {activeTab === "config" && (
             <div className="px-4 py-3">
               {a.automation_key === "lead_reply" ? (
-                <LeadReplyConfigPanel automation={a} onUpdate={onUpdate} />
+                <LeadReplyConfigPanel automation={a} clientSlug={clientSlug} onUpdate={onUpdate} />
               ) : a.automation_key === "review_collector" ? (
                 <ReviewCollectorConfigPanel automation={a} onUpdate={onUpdate} />
+              ) : a.automation_key === "social_poster" ? (
+                <SocialPosterConfigPanel automation={a} onUpdate={onUpdate} />
               ) : (
                 <p className="text-[11px]" style={{ color: "var(--adm-text-muted)" }}>
                   No configurable settings for this automation type.
@@ -559,9 +565,11 @@ function AutomationRow({
 
 function LeadReplyConfigPanel({
   automation,
+  clientSlug,
   onUpdate,
 }: {
   automation: Automation;
+  clientSlug: string;
   onUpdate: (id: string, u: Partial<Automation>) => Promise<void>;
 }) {
   const cfg = (automation.config ?? {}) as Record<string, unknown>;
@@ -577,6 +585,8 @@ function LeadReplyConfigPanel({
   const [emailExample, setEmailExample] = useState((cfg.email_example as string) ?? "");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const inboundAddress = `${clientSlug}@olkochiex.resend.app`;
 
   async function handleSave() {
     setBusy(true);
@@ -605,8 +615,8 @@ function LeadReplyConfigPanel({
       <div className="rounded-lg p-3 text-[10px]" style={{ backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text-secondary)" }}>
         <span className="font-semibold" style={{ color: "var(--adm-text)" }}>Inbound email: </span>
         Forward or CC contact form emails to{" "}
-        <span className="font-mono" style={{ color: "var(--adm-accent)" }}>[client-slug]@leads.getd.dk</span>
-        {" "}— Resend will route them here and trigger this automation.
+        <span className="font-mono select-all" style={{ color: "var(--adm-accent)" }}>{inboundAddress}</span>
+        {" "}— Resend routes them here and triggers this automation.
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -644,16 +654,7 @@ function LeadReplyConfigPanel({
         rows={6}
       />
 
-      <div className="flex justify-end pt-1">
-        <button
-          onClick={handleSave}
-          disabled={busy}
-          className="flex items-center gap-1.5 rounded-md px-4 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50 transition-colors"
-          style={{ backgroundColor: saved ? "#22c55e" : "var(--adm-accent)" }}
-        >
-          {saved ? <><Check className="h-3 w-3" /> Saved</> : <><Check className="h-3 w-3" /> Save config</>}
-        </button>
-      </div>
+      <SaveButton busy={busy} saved={saved} onSave={handleSave} />
     </div>
   );
 }
@@ -671,9 +672,15 @@ function ReviewCollectorConfigPanel({
 }) {
   const cfg = (automation.config ?? {}) as Record<string, unknown>;
 
+  const [ownerName, setOwnerName] = useState((cfg.owner_name as string) ?? "");
+  const [businessName, setBusinessName] = useState((cfg.business_name as string) ?? "");
   const [fromName, setFromName] = useState((cfg.from_name as string) ?? "");
   const [fromEmail, setFromEmail] = useState((cfg.from_email as string) ?? "");
-  const [reviewUrl, setReviewUrl] = useState((cfg.review_url as string) ?? "");
+  const [reviewPlatform, setReviewPlatform] = useState((cfg.review_platform as string) ?? "Trustpilot");
+  const [reviewLink, setReviewLink] = useState((cfg.review_link as string) ?? "");
+  const [voiceSamples, setVoiceSamples] = useState(
+    Array.isArray(cfg.voice_samples) ? (cfg.voice_samples as string[]).join("\n---\n") : ""
+  );
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -681,9 +688,16 @@ function ReviewCollectorConfigPanel({
     setBusy(true);
     await onUpdate(automation.id, {
       config: {
+        owner_name: ownerName.trim(),
+        business_name: businessName.trim(),
         from_name: fromName.trim(),
         from_email: fromEmail.trim(),
-        review_url: reviewUrl.trim(),
+        review_platform: reviewPlatform.trim(),
+        review_link: reviewLink.trim(),
+        voice_samples: voiceSamples
+          .split("---")
+          .map((s) => s.trim())
+          .filter(Boolean),
       },
     } as Partial<Automation>);
     setBusy(false);
@@ -694,20 +708,99 @@ function ReviewCollectorConfigPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-2">
+        <Field label="Owner Name" value={ownerName} onChange={setOwnerName} placeholder="Thomas" />
+        <Field label="Business Name" value={businessName} onChange={setBusinessName} placeholder="La Caffè" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
         <Field label="From Name" value={fromName} onChange={setFromName} placeholder="Thomas Christensen" />
         <Field label="From Email" value={fromEmail} onChange={setFromEmail} placeholder="thomas@lucaffe.dk" type="email" />
       </div>
-      <Field label="Google Review URL" value={reviewUrl} onChange={setReviewUrl} placeholder="https://g.page/r/..." />
-      <div className="flex justify-end pt-1">
-        <button
-          onClick={handleSave}
-          disabled={busy}
-          className="flex items-center gap-1.5 rounded-md px-4 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50 transition-colors"
-          style={{ backgroundColor: saved ? "#22c55e" : "var(--adm-accent)" }}
-        >
-          {saved ? <><Check className="h-3 w-3" /> Saved</> : <><Check className="h-3 w-3" /> Save config</>}
-        </button>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Review Platform" value={reviewPlatform} onChange={setReviewPlatform} placeholder="Trustpilot" />
+        <Field label="Review Link" value={reviewLink} onChange={setReviewLink} placeholder="https://trustpilot.com/review/..." />
       </div>
+      <TextareaField
+        label="Voice Samples"
+        hint="Paste 1–3 example messages Thomas would send. Separate with --- on its own line."
+        value={voiceSamples}
+        onChange={setVoiceSamples}
+        placeholder={"Hej! Det var en fornøjelse. Hvis du har et øjeblik, vil vi sætte stor pris på en anmeldelse.\n---\nTak for dit besøg! En anmeldelse betyder verden for os."}
+        rows={5}
+      />
+      <SaveButton busy={busy} saved={saved} onSave={handleSave} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Social Poster config panel                                         */
+/* ------------------------------------------------------------------ */
+
+function SocialPosterConfigPanel({
+  automation,
+  onUpdate,
+}: {
+  automation: Automation;
+  onUpdate: (id: string, u: Partial<Automation>) => Promise<void>;
+}) {
+  const cfg = (automation.config ?? {}) as Record<string, unknown>;
+
+  const [ownerName, setOwnerName] = useState((cfg.owner_name as string) ?? "");
+  const [businessName, setBusinessName] = useState((cfg.business_name as string) ?? "");
+  const [platforms, setPlatforms] = useState((cfg.platforms as string) ?? "");
+  const [hashtags, setHashtags] = useState((cfg.hashtags as string) ?? "");
+  const [voiceSamples, setVoiceSamples] = useState(
+    Array.isArray(cfg.voice_samples) ? (cfg.voice_samples as string[]).join("\n---\n") : ""
+  );
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function handleSave() {
+    setBusy(true);
+    await onUpdate(automation.id, {
+      config: {
+        owner_name: ownerName.trim(),
+        business_name: businessName.trim(),
+        platforms: platforms.trim(),
+        hashtags: hashtags.trim(),
+        voice_samples: voiceSamples
+          .split("---")
+          .map((s) => s.trim())
+          .filter(Boolean),
+      },
+    } as Partial<Automation>);
+    setBusy(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Owner Name" value={ownerName} onChange={setOwnerName} placeholder="Thomas" />
+        <Field label="Business Name" value={businessName} onChange={setBusinessName} placeholder="La Caffè" />
+      </div>
+      <Field
+        label="Platforms"
+        value={platforms}
+        onChange={setPlatforms}
+        placeholder="Instagram, Facebook"
+      />
+      <Field
+        label="Hashtags"
+        value={hashtags}
+        onChange={setHashtags}
+        placeholder="#lacaffe #kaffe #københavn"
+      />
+      <TextareaField
+        label="Voice Samples"
+        hint="Paste 1–3 example posts Thomas would write. Separate with --- on its own line."
+        value={voiceSamples}
+        onChange={setVoiceSamples}
+        placeholder={"Frisk kaffe til en frisk mandag ☕ Kom forbi og få din favorit.\n---\nNyt på menuen! Prøv vores sæsonens specialitet – kun her i butikken."}
+        rows={6}
+      />
+      <SaveButton busy={busy} saved={saved} onSave={handleSave} />
     </div>
   );
 }
@@ -715,6 +808,21 @@ function ReviewCollectorConfigPanel({
 /* ------------------------------------------------------------------ */
 /*  Shared field components                                            */
 /* ------------------------------------------------------------------ */
+
+function SaveButton({ busy, saved, onSave }: { busy: boolean; saved: boolean; onSave: () => void }) {
+  return (
+    <div className="flex justify-end pt-1">
+      <button
+        onClick={onSave}
+        disabled={busy}
+        className="flex items-center gap-1.5 rounded-md px-4 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50 transition-colors"
+        style={{ backgroundColor: saved ? "#22c55e" : "var(--adm-accent)" }}
+      >
+        <Check className="h-3 w-3" /> {saved ? "Saved" : "Save config"}
+      </button>
+    </div>
+  );
+}
 
 function Field({
   label, value, onChange, placeholder, type = "text",
