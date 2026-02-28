@@ -28,7 +28,7 @@ interface BrandKit {
 }
 
 const GOOGLE_FONTS = [
-  "Inter", "Manrope", "Roboto", "Open Sans", "Lato", "Montserrat", "Poppins",
+  "Inter", "Onest", "Figtree", "Manrope", "Roboto", "Open Sans", "Lato", "Montserrat", "Poppins",
   "Raleway", "Nunito", "Playfair Display", "Merriweather", "DM Sans",
   "Space Grotesk", "Plus Jakarta Sans", "Outfit", "Unbounded", "IBM Plex Sans",
 ];
