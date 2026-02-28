@@ -37,6 +37,22 @@ export async function POST(request: Request) {
 
   const supabase = createAdminClient();
 
+  // ── Idempotency guard ─────────────────────────────────────────────────
+  // Insert event ID atomically — unique constraint blocks duplicate processing.
+  const { error: idempotencyError } = await supabase
+    .from("stripe_webhook_events")
+    .insert({ event_id: event.id });
+
+  if (idempotencyError) {
+    if (idempotencyError.code === "23505") {
+      // Already processed — Stripe retried a delivery we already handled
+      console.log(`[webhook] Duplicate event ${event.id} — skipping`);
+      return NextResponse.json({ received: true });
+    }
+    // Non-idempotency error — log but continue processing to avoid missed payments
+    console.error("[webhook] Idempotency insert failed:", idempotencyError.message);
+  }
+
   switch (event.type) {
     // ── One-time payment completed ──
     case "checkout.session.completed": {

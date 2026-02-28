@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse, type NextRequest } from "next/server";
 import { parseLeadEmail } from "@/lib/automations/lead-reply/parse-email";
 import { LeadReplyAutomation } from "@/lib/automations/lead-reply";
+import { sendSystemEmail } from "@/lib/email";
 
 const automation = new LeadReplyAutomation();
 
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
   // ── Resolve automation ────────────────────────────────────────────────
   const { data: automationRow, error: automationError } = await supabase
     .from("automations")
-    .select("id, is_enabled, config, require_approval")
+    .select("id, name, is_enabled, config, require_approval")
     .eq("client_id", client.id)
     .eq("automation_key", "lead_reply")
     .single();
@@ -162,6 +163,19 @@ export async function POST(req: NextRequest) {
     });
 
     console.log(`[inbound-lead] Draft stored for approval — client ${slug}`);
+
+    // Notify owner if notify_email is set in automation config
+    const notifyEmail = config.notify_email as string | undefined;
+    const fromEmail = config.from_email as string | undefined;
+    if (notifyEmail && fromEmail) {
+      await sendSystemEmail({
+        to: notifyEmail,
+        fromEmail,
+        subject: `New lead draft waiting: ${parsed.from_name ?? parsed.from_email}`,
+        text: `A lead reply draft is waiting for your review in your dashboard.\n\nFrom: ${parsed.from_name ?? ""} <${parsed.from_email}>\nSubject: ${parsed.subject ?? subject}\n\nOpen your dashboard to review and approve the draft before it is sent.`,
+      });
+    }
+
     return NextResponse.json({ success: true, pending_approval: true });
   }
 

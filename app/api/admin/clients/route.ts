@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/admin-auth";
+import bcrypt from "bcryptjs";
 
 export async function GET(request: Request) {
   if (!isAdminRequest(request)) {
@@ -23,9 +24,15 @@ export async function POST(request: Request) {
   const body = await request.json();
   const supabase = createAdminClient();
 
+  // Hash PIN before storing if provided
+  const insertBody = { ...body };
+  if (insertBody.pin) {
+    insertBody.pin_hash = await bcrypt.hash(String(insertBody.pin), 10);
+  }
+
   const { data, error } = await supabase
     .from("clients")
-    .insert(body)
+    .insert(insertBody)
     .select()
     .single();
 

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/admin-auth";
+import bcrypt from "bcryptjs";
 
 export async function GET(
   request: Request,
@@ -50,9 +51,15 @@ export async function PATCH(
   const body = await request.json();
   const supabase = createAdminClient();
 
+  // Hash PIN before storing if it's being updated
+  const updateBody = { ...body };
+  if (updateBody.pin) {
+    updateBody.pin_hash = await bcrypt.hash(String(updateBody.pin), 10);
+  }
+
   const { data, error } = await supabase
     .from("clients")
-    .update({ ...body, updated_at: new Date().toISOString() })
+    .update({ ...updateBody, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();

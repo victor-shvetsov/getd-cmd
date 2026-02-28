@@ -14,6 +14,7 @@ import {
   Activity,
   Database,
   Search,
+  Workflow,
 } from "lucide-react";
 import Image from "next/image";
 import { HealthCheck } from "@/components/admin/health-check";
@@ -117,6 +118,14 @@ export function AdminDashboard({ onLogout, token, theme, toggleTheme }: AdminDas
           </div>
           <div className="flex items-center gap-2">
             <AdminThemeToggle theme={theme} toggle={toggleTheme} />
+            <button
+              onClick={() => router.push("/admin/map")}
+              className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors hover:opacity-80"
+              style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-secondary)" }}
+            >
+              <Workflow className="h-3.5 w-3.5" />
+              Map
+            </button>
             <button
               onClick={() => setShowHealth(true)}
               className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors hover:opacity-80"

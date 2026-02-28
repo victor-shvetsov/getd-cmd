@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse, type NextRequest } from "next/server";
 import { getAutomation } from "@/lib/automations/registry";
+import { sendSystemEmail } from "@/lib/email";
 
 /**
  * POST /api/automations/[key]/trigger
@@ -66,7 +67,7 @@ export async function POST(
   // ── Resolve automation ────────────────────────────────────────────────
   const { data: automationRow, error: automationError } = await supabase
     .from("automations")
-    .select("id, is_enabled, config, require_approval")
+    .select("id, name, is_enabled, config, require_approval")
     .eq("client_id", client.id)
     .eq("automation_key", key)
     .single();
@@ -135,6 +136,20 @@ export async function POST(
     });
 
     console.log(`[automation/${key}] Draft stored for approval — client ${client.slug}`);
+
+    // Notify owner if notify_email is set in automation config
+    const cfg = (automationRow.config as Record<string, unknown>) ?? {};
+    const notifyEmail = cfg.notify_email as string | undefined;
+    const fromEmail = cfg.from_email as string | undefined;
+    if (notifyEmail && fromEmail) {
+      await sendSystemEmail({
+        to: notifyEmail,
+        fromEmail,
+        subject: `Draft ready for review: ${automationRow.name ?? key}`,
+        text: `A new draft is waiting for your review in your dashboard.\n\nAutomation: ${automationRow.name ?? key}\n\nOpen your dashboard to review and approve the draft before it is sent.`,
+      });
+    }
+
     return NextResponse.json({ success: true, pending_approval: true });
   }
 

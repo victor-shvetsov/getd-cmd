@@ -94,10 +94,18 @@ function s(key: string, lang: string, translations: Tx, fallback: string): strin
   return t(`sales.${key}`, lang, translations as Record<string, Record<string, Record<string, string>>>) || fallback;
 }
 
-function fmtCurrency(amount: number, currency: string): string {
+function langToLocale(lang: string): string {
+  const map: Record<string, string> = {
+    da: "da-DK", de: "de-DE", fr: "fr-FR", es: "es-ES",
+    ro: "ro-RO", ru: "ru-RU", se: "sv-SE",
+  };
+  return map[lang] ?? "en-GB";
+}
+
+function fmtCurrency(amount: number, currency: string, lang = "en"): string {
   const code = currency.toUpperCase();
   try {
-    return new Intl.NumberFormat("da-DK", {
+    return new Intl.NumberFormat(langToLocale(lang), {
       style: "currency",
       currency: code,
       minimumFractionDigits: 0,
@@ -105,18 +113,18 @@ function fmtCurrency(amount: number, currency: string): string {
     }).format(amount);
   } catch {
     const symbols: Record<string, string> = { DKK: "kr", EUR: "\u20ac", USD: "$", GBP: "\u00a3", SEK: "kr", NOK: "kr" };
-    return `${symbols[code] || code} ${amount.toLocaleString("da-DK")}`;
+    return `${symbols[code] || code} ${amount.toLocaleString(langToLocale(lang))}`;
   }
 }
 
-function fmtCompact(amount: number, currency: string): string {
+function fmtCompact(amount: number, currency: string, lang = "en"): string {
   const code = currency.toUpperCase();
   const sym: Record<string, string> = { DKK: "kr ", EUR: "\u20ac", USD: "$", GBP: "\u00a3", SEK: "kr ", NOK: "kr " };
   const prefix = sym[code] || `${code} `;
   if (amount >= 1_000_000) return `${prefix}${(amount / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
   if (amount >= 100_000) return `${prefix}${Math.round(amount / 1000)}K`;
   if (amount >= 10_000) return `${prefix}${(amount / 1000).toFixed(1).replace(/\.0$/, "")}K`;
-  return `${prefix}${amount.toLocaleString("da-DK")}`;
+  return `${prefix}${amount.toLocaleString(langToLocale(lang))}`;
 }
 
 function getCurrentMonth(): string {
@@ -133,8 +141,7 @@ function shiftMonth(monthStr: string, delta: number): string {
 function getMonthLabel(monthStr: string, lang: string): string {
   const [y, m] = monthStr.split("-").map(Number);
   const d = new Date(y, m - 1);
-  const locale = lang === "da" ? "da-DK" : lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : lang === "ro" ? "ro-RO" : lang === "ru" ? "ru-RU" : "en-US";
-  return d.toLocaleDateString(locale, { month: "long", year: "numeric" });
+  return d.toLocaleDateString(langToLocale(lang), { month: "long", year: "numeric" });
 }
 
 function isCurrentMonth(monthStr: string): boolean {
@@ -283,8 +290,7 @@ function SaleRow({
   const src = getSourceConfig(entry.source);
   const Icon = src?.icon ?? Tag;
 
-  const locale = lang === "da" ? "da-DK" : lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : lang === "ro" ? "ro-RO" : lang === "ru" ? "ru-RU" : "en-US";
-  const dateStr = new Date(entry.sold_at).toLocaleDateString(locale, {
+  const dateStr = new Date(entry.sold_at).toLocaleDateString(langToLocale(lang), {
     day: "numeric",
     month: "short",
   });
@@ -330,7 +336,7 @@ function SaleRow({
         </div>
         <div className="flex flex-col items-end shrink-0">
           <span className="text-sm font-bold tabular-nums" style={{ color: "var(--text-1)" }}>
-            {fmtCurrency(entry.amount, currency)}
+            {fmtCurrency(entry.amount, currency, lang)}
           </span>
           <span className="text-[10px] opacity-30">{dateStr}</span>
         </div>
@@ -501,7 +507,7 @@ function AddSaleSheet({
             className="mt-1 w-full py-3.5 text-sm font-bold text-white transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-30"
             style={{ backgroundColor: "var(--client-primary, #3b82f6)", borderRadius: R_SM }}
           >
-            {saving ? s("saving", lang, translations, "Saving...") : `${s("add_amount", lang, translations, "Add")} ${amount ? fmtCurrency(Number(amount), currency) : ""}`}
+            {saving ? s("saving", lang, translations, "Saving...") : `${s("add_amount", lang, translations, "Add")} ${amount ? fmtCurrency(Number(amount), currency, lang) : ""}`}
           </button>
         </div>
       </div>
@@ -577,7 +583,7 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
 
   const statusMessage = useMemo(() => {
     if (!isCurrent) {
-      if (revenueGoal === 0) return `${fmtCurrency(totalRevenue, currency)} ${s("total", lang, tx, "total")}`;
+      if (revenueGoal === 0) return `${fmtCurrency(totalRevenue, currency, lang)} ${s("total", lang, tx, "total")}`;
       return progressPct >= 100
         ? s("goal_reached", lang, tx, "Goal reached!")
         : `${Math.round(progressPct)}% ${s("pct_of_goal", lang, tx, "of goal")}`;
@@ -656,11 +662,11 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
         >
           <ProgressRing pct={progressPct} color={paceColor} size={190} stroke={12}>
             <span className="text-center text-2xl font-bold tabular-nums leading-tight" style={{ maxWidth: 130 }}>
-              {fmtCompact(totalRevenue, currency)}
+              {fmtCompact(totalRevenue, currency, lang)}
             </span>
             {revenueGoal > 0 && (
               <span className="mt-0.5 text-center text-[11px] opacity-40">
-                {s("of_goal", lang, tx, "of")} {fmtCompact(revenueGoal, currency)}
+                {s("of_goal", lang, tx, "of")} {fmtCompact(revenueGoal, currency, lang)}
               </span>
             )}
           </ProgressRing>
@@ -739,7 +745,7 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium opacity-70">{cat.name}</span>
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-xs font-bold tabular-nums">{fmtCurrency(cat.total, currency)}</span>
+                      <span className="text-xs font-bold tabular-nums">{fmtCurrency(cat.total, currency, lang)}</span>
                       <span className="text-[10px] opacity-30">{cat.count}x</span>
                     </div>
                   </div>
@@ -780,7 +786,7 @@ export function SalesTab({ clientId, currency, lang, translations: rawTx }: Sale
                       {cfg ? s(cfg.i18nKey, lang, tx, cfg.key) : src}
                     </span>
                     <span className="text-xs font-bold tabular-nums" style={{ color: cfg?.color || "#6b7280" }}>
-                      {fmtCurrency(amount, currency)}
+                      {fmtCurrency(amount, currency, lang)}
                     </span>
                   </div>
                 );

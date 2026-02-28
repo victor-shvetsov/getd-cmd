@@ -56,6 +56,9 @@ const KEY_ICONS: Record<string, typeof Zap> = {
   review_collector: Star,
 };
 
+// Automations not yet fully wired — shown as "coming soon" to clients
+const COMING_SOON_KEYS = new Set(["social_poster"]);
+
 /* ------------------------------------------------------------------ */
 /*  Draft card                                                          */
 /* ------------------------------------------------------------------ */
@@ -275,38 +278,52 @@ function AutomationCard({
           <h3 className="text-sm font-semibold leading-snug">{automation.name}</h3>
           <p className="mt-0.5 text-xs leading-relaxed opacity-50">{automation.description}</p>
         </div>
-        <Toggle enabled={optimisticEnabled} loading={loading} onToggle={handleToggle} />
+        {!COMING_SOON_KEYS.has(automation.automation_key) && (
+          <Toggle enabled={optimisticEnabled} loading={loading} onToggle={handleToggle} />
+        )}
       </div>
 
-      {/* Counter */}
-      {automation.counter_value > 0 && (
+      {/* Coming soon badge — replaces counter + status for unfinished automations */}
+      {COMING_SOON_KEYS.has(automation.automation_key) ? (
         <div
-          className="flex items-center gap-2 px-3 py-2"
-          style={{ backgroundColor: "var(--surface-2)", borderRadius: R_SM }}
+          className="rounded-lg px-3 py-2 text-xs opacity-50"
+          style={{ backgroundColor: "var(--surface-2)" }}
         >
-          <span
-            className="text-lg font-bold tabular-nums"
-            style={{ color: optimisticEnabled ? "var(--client-primary, #3b82f6)" : "inherit", opacity: optimisticEnabled ? 1 : 0.4 }}
-          >
-            {automation.counter_value}
-          </span>
-          <span className="text-xs opacity-40">{automation.counter_label} {t("automations.this_month", lang, tr)}</span>
+          Coming soon
         </div>
-      )}
+      ) : (
+        <>
+          {/* Counter */}
+          {automation.counter_value > 0 && (
+            <div
+              className="flex items-center gap-2 px-3 py-2"
+              style={{ backgroundColor: "var(--surface-2)", borderRadius: R_SM }}
+            >
+              <span
+                className="text-lg font-bold tabular-nums"
+                style={{ color: optimisticEnabled ? "var(--client-primary, #3b82f6)" : "inherit", opacity: optimisticEnabled ? 1 : 0.4 }}
+              >
+                {automation.counter_value}
+              </span>
+              <span className="text-xs opacity-40">{automation.counter_label} {t("automations.this_month", lang, tr)}</span>
+            </div>
+          )}
 
-      {/* Status indicator */}
-      <div className="flex items-center gap-1.5">
-        <div
-          className="h-1.5 w-1.5"
-          style={{
-            borderRadius: 9999,
-            backgroundColor: optimisticEnabled ? "#16a34a" : "var(--surface-3)",
-          }}
-        />
-        <span className="text-[10px] font-medium" style={{ opacity: optimisticEnabled ? 0.6 : 0.3 }}>
-          {optimisticEnabled ? t("automations.running", lang, tr) : t("automations.paused", lang, tr)}
-        </span>
-      </div>
+          {/* Status indicator */}
+          <div className="flex items-center gap-1.5">
+            <div
+              className="h-1.5 w-1.5"
+              style={{
+                borderRadius: 9999,
+                backgroundColor: optimisticEnabled ? "#16a34a" : "var(--surface-3)",
+              }}
+            />
+            <span className="text-[10px] font-medium" style={{ opacity: optimisticEnabled ? 0.6 : 0.3 }}>
+              {optimisticEnabled ? t("automations.running", lang, tr) : t("automations.paused", lang, tr)}
+            </span>
+          </div>
+        </>
+      )}
     </div>
   );
 }

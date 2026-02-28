@@ -49,6 +49,7 @@ const PRESETS = [
     name: "Social media posting",
     description: "Automatically publishes scheduled content to social media channels",
     counter_label: "posts published",
+    comingSoon: true,
   },
   {
     automation_key: "review_collector",
@@ -61,12 +62,14 @@ const PRESETS = [
     name: "Report generator",
     description: "Automatically generates and sends performance reports",
     counter_label: "reports sent",
+    comingSoon: true,
   },
   {
     automation_key: "email_sequence",
     name: "Email sequence",
     description: "Drip email campaign triggered by lead actions",
     counter_label: "emails sent",
+    comingSoon: true,
   },
 ];
 
@@ -207,18 +210,25 @@ export function AutomationsEditor({ clientId, clientSlug, token }: Props) {
             {PRESETS.filter((p) => !existingKeys.has(p.automation_key)).map((preset) => (
               <button
                 key={preset.automation_key}
-                onClick={() => createAutomation(preset)}
-                className="flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors hover:border-[var(--adm-accent)]"
+                onClick={() => !preset.comingSoon && createAutomation(preset)}
+                disabled={preset.comingSoon}
+                className="flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:enabled:border-[var(--adm-accent)]"
                 style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}
               >
-                <Zap className="h-4 w-4 flex-shrink-0" style={{ color: "var(--adm-accent)" }} />
+                <Zap className="h-4 w-4 flex-shrink-0" style={{ color: preset.comingSoon ? "var(--adm-text-muted)" : "var(--adm-accent)" }} />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-semibold" style={{ color: "var(--adm-text)" }}>{preset.name}</div>
                   <div className="text-[10px] mt-0.5" style={{ color: "var(--adm-text-secondary)" }}>{preset.description}</div>
                 </div>
-                <span className="rounded-md px-2 py-0.5 text-[9px] font-mono" style={{ backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text-muted)" }}>
-                  {preset.automation_key}
-                </span>
+                {preset.comingSoon ? (
+                  <span className="rounded-md px-2 py-0.5 text-[9px] font-semibold" style={{ backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text-muted)" }}>
+                    coming soon
+                  </span>
+                ) : (
+                  <span className="rounded-md px-2 py-0.5 text-[9px] font-mono" style={{ backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text-muted)" }}>
+                    {preset.automation_key}
+                  </span>
+                )}
               </button>
             ))}
 
@@ -509,6 +519,32 @@ function AutomationRow({
                       />
                     </button>
                   </div>
+
+                  {/* Notify email — shown when approval mode is on */}
+                  {a.require_approval && (
+                    <div className="flex flex-col gap-1 rounded-lg px-3 py-2.5" style={{ backgroundColor: "var(--adm-surface-2)" }}>
+                      <label className="text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>
+                        Notify email when draft is waiting
+                      </label>
+                      <input
+                        type="email"
+                        defaultValue={(a.config.notify_email as string) ?? ""}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          if (val !== ((a.config.notify_email as string) ?? "")) {
+                            onUpdate(a.id, { config: { ...a.config, notify_email: val || undefined } });
+                          }
+                        }}
+                        placeholder="owner@example.com"
+                        className="w-full rounded border px-2 py-1 text-[11px] outline-none focus:ring-1"
+                        style={{
+                          backgroundColor: "var(--adm-surface)",
+                          borderColor: "var(--adm-border)",
+                          color: "var(--adm-text)",
+                        }}
+                      />
+                    </div>
+                  )}
 
                   <div className="flex gap-2">
                     <button

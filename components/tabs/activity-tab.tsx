@@ -36,6 +36,14 @@ interface ActivityTabProps {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+function langToLocale(lang: string): string {
+  const map: Record<string, string> = {
+    da: "da-DK", de: "de-DE", fr: "fr-FR", es: "es-ES",
+    ro: "ro-RO", ru: "ru-RU", se: "sv-SE",
+  };
+  return map[lang] ?? "en-GB";
+}
+
 const R = "var(--client-radius, 0.75rem)";
 const R_SM = "calc(var(--client-radius, 0.75rem) * 0.65)";
 
@@ -69,15 +77,14 @@ function getRelativeDate(
   if (diffDays < 30) return `${Math.floor(diffDays / 7)} ${t("common.weeks_ago", lang, tr)}`;
 
   // Locale-aware month formatting
-  const locale = lang === "da" ? "da-DK" : lang === "ru" ? "ru-RU" : lang === "ro" ? "ro-RO" : lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : "en-US";
-  return date.toLocaleDateString(locale, { month: "short", day: "numeric" });
+  return date.toLocaleDateString(langToLocale(lang), { month: "short", day: "numeric" });
 }
 
 function groupByMonth(
   entries: ActivityEntry[],
   lang: string
 ): Record<string, ActivityEntry[]> {
-  const locale = lang === "da" ? "da-DK" : lang === "ru" ? "ru-RU" : lang === "ro" ? "ro-RO" : lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : "en-US";
+  const locale = langToLocale(lang);
   const groups: Record<string, ActivityEntry[]> = {};
   for (const entry of entries) {
     const date = new Date(entry.created_at);
