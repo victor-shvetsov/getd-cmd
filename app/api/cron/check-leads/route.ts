@@ -4,7 +4,7 @@ import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 import { parseLeadEmail } from "@/lib/automations/lead-reply/parse-email";
 import { LeadReplyAutomation } from "@/lib/automations/lead-reply";
-import { extractSmtpConfig } from "@/lib/automations/lead-reply/tools";
+import { extractSmtpConfig, extractImapConfig } from "@/lib/automations/lead-reply/tools";
 
 const automation = new LeadReplyAutomation();
 
@@ -73,12 +73,9 @@ export async function GET() {
     const slug = clientData?.slug ?? "unknown";
     const emailAccount = clientData?.email_account ?? null;
 
-    // Resolve IMAP credentials: prefer client email_account, fall back to automation config
-    const imapHost = (emailAccount?.imap_host ?? config.imap_host) as string | undefined;
-    const emailUser = (emailAccount?.email_user ?? config.email_user) as string | undefined;
-    const emailPass = (emailAccount?.email_pass ?? config.email_pass) as string | undefined;
-
-    if (!imapHost || !emailUser || !emailPass) continue;
+    // Resolve IMAP credentials: prefer client email_account (new or legacy format), fall back to automation config
+    const imapCfg = extractImapConfig(emailAccount ?? {}) ?? extractImapConfig(config);
+    if (!imapCfg) continue;
 
     try {
       const count = await processMailbox({
@@ -216,21 +213,17 @@ async function processMailbox({
   requireApproval: boolean;
   supabase: ReturnType<typeof createAdminClient>;
 }): Promise<number> {
-  // Resolve IMAP credentials: client email_account first, then legacy automation config
-  const ea = emailAccount ?? {};
-  const imapHost = (ea.imap_host ?? config.imap_host) as string;
-  const imapPort = ((ea.imap_port ?? config.imap_port) as number) ?? 993;
-  const emailUser = (ea.email_user ?? config.email_user) as string;
-  const emailPass = (ea.email_pass ?? config.email_pass) as string;
+  // Resolve IMAP credentials: client email_account (new or legacy), then automation config
+  const imap = (extractImapConfig(emailAccount ?? {}) ?? extractImapConfig(config))!;
 
   const replyDelayMinutes =
     typeof config.reply_delay_minutes === "number" ? config.reply_delay_minutes : 0;
 
   const client = new ImapFlow({
-    host: imapHost,
-    port: imapPort,
+    host: imap.host,
+    port: imap.port,
     secure: true,
-    auth: { user: emailUser, pass: emailPass },
+    auth: { user: imap.user, pass: imap.pass },
     logger: false,
   });
 
@@ -262,7 +255,7 @@ async function processMailbox({
           }
 
           // Skip replies we sent ourselves (avoid reply loops)
-          if (fromEmail.toLowerCase() === emailUser.toLowerCase()) {
+          if (fromEmail.toLowerCase() === imap.user.toLowerCase()) {
             await client.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
             continue;
           }

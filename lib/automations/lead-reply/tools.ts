@@ -77,11 +77,59 @@ export async function sendEmail(
   return { success: true, messageId: data.messageId };
 }
 
+export interface ImapConfig {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+}
+
 /**
- * Extract SMTP config from automation config JSONB.
- * Returns undefined if smtp_host / email_user / email_pass are not set.
+ * Extract IMAP config from email_account JSONB or legacy flat config.
+ *
+ * New format (clients.email_account):
+ *   { imap: { host, port, user, pass }, smtp: { ... } }
+ *
+ * Legacy flat format (old email_account or automations.config):
+ *   { imap_host, imap_port, email_user, email_pass }
+ */
+export function extractImapConfig(config: Record<string, unknown>): ImapConfig | undefined {
+  if (config.imap && typeof config.imap === "object") {
+    const imap = config.imap as Record<string, unknown>;
+    if (!imap.host || !imap.user || !imap.pass) return undefined;
+    return {
+      host: imap.host as string,
+      port: (imap.port as number) ?? 993,
+      user: imap.user as string,
+      pass: imap.pass as string,
+    };
+  }
+  if (!config.imap_host || !config.email_user || !config.email_pass) return undefined;
+  return {
+    host: config.imap_host as string,
+    port: (config.imap_port as number) ?? 993,
+    user: config.email_user as string,
+    pass: config.email_pass as string,
+  };
+}
+
+/**
+ * Extract SMTP config from email_account JSONB or legacy flat config.
+ *
+ * New format: { smtp: { host, port, user, pass } }
+ * Legacy flat: { smtp_host, smtp_port, email_user, email_pass }
  */
 export function extractSmtpConfig(config: Record<string, unknown>): SmtpConfig | undefined {
+  if (config.smtp && typeof config.smtp === "object") {
+    const smtp = config.smtp as Record<string, unknown>;
+    if (!smtp.host || !smtp.user || !smtp.pass) return undefined;
+    return {
+      host: smtp.host as string,
+      port: (smtp.port as number) ?? 465,
+      user: smtp.user as string,
+      pass: smtp.pass as string,
+    };
+  }
   if (!config.smtp_host || !config.email_user || !config.email_pass) return undefined;
   return {
     host: config.smtp_host as string,

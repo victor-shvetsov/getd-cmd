@@ -645,6 +645,8 @@ function LeadReplyConfigPanel({
   );
   const [emailExample, setEmailExample] = useState((cfg.email_example as string) ?? "");
   const [customInstructions, setCustomInstructions] = useState((cfg.custom_instructions as string) ?? "");
+  const [customPrompt, setCustomPrompt] = useState((cfg.custom_prompt as string) ?? "");
+  const [showAdvanced, setShowAdvanced] = useState(!!(cfg.custom_prompt as string));
   const [replyDelayMinutes, setReplyDelayMinutes] = useState(
     typeof cfg.reply_delay_minutes === "number" ? cfg.reply_delay_minutes : 0
   );
@@ -668,6 +670,7 @@ function LeadReplyConfigPanel({
           .filter(Boolean),
         email_example: emailExample.trim() || undefined,
         custom_instructions: customInstructions.trim() || undefined,
+        custom_prompt: customPrompt.trim() || undefined,
         reply_delay_minutes: replyDelayMinutes > 0 ? replyDelayMinutes : undefined,
       },
     } as Partial<Automation>);
@@ -722,13 +725,57 @@ function LeadReplyConfigPanel({
       />
 
       <TextareaField
-        label="Custom Instructions"
-        hint="Extra rules for the AI when writing replies. Added at the end of the system prompt."
+        label="Additional Instructions"
+        hint="Extra rules appended to the default prompt. Leave blank if using the full prompt override below."
         value={customInstructions}
         onChange={setCustomInstructions}
         placeholder={"Always mention free delivery on orders over 500 DKK.\nNever quote specific prices — invite them to call for a quote."}
         rows={4}
       />
+
+      {/* Advanced: full prompt override */}
+      <div className="rounded-lg border" style={{ borderColor: "var(--adm-border)" }}>
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold" style={{ color: "var(--adm-text)" }}>
+              Advanced: Override Full Prompt
+            </span>
+            {customPrompt.trim() && (
+              <span
+                className="rounded-full px-2 py-0.5 text-[9px] font-semibold"
+                style={{ backgroundColor: "color-mix(in srgb, var(--adm-accent) 15%, transparent)", color: "var(--adm-accent)" }}
+              >
+                Active
+              </span>
+            )}
+          </div>
+          <ChevronDown
+            className="h-3.5 w-3.5 transition-transform"
+            style={{ color: "var(--adm-text-muted)", transform: showAdvanced ? "rotate(180deg)" : "none" }}
+          />
+        </button>
+        {showAdvanced && (
+          <div className="flex flex-col gap-2 border-t px-3 pb-3 pt-2.5" style={{ borderColor: "var(--adm-border)" }}>
+            <p className="text-[10px] leading-relaxed" style={{ color: "var(--adm-text-muted)" }}>
+              <span className="font-semibold" style={{ color: "var(--adm-danger-text, #e53e3e)" }}>Replaces everything</span>
+              {" "}— voice samples, rules, signature, and additional instructions above are all ignored.
+              Write a complete system prompt. Leave blank to use the default prompt.
+            </p>
+            <textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              rows={10}
+              placeholder={`You are a reply assistant for La Caffè, responding on behalf of Thomas.\n\nWrite a warm, short reply in Danish. Always ask what kind of coffee they prefer. Sign off as:\nMed venlig hilsen\nThomas`}
+              className="w-full resize-y rounded-md border px-2.5 py-2 font-mono text-[11px] outline-none"
+              style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Reply delay */}
       <div>

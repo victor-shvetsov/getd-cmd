@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Check, Eye, EyeOff } from "lucide-react";
+import { Mail, Check, Eye, EyeOff, ArrowRight } from "lucide-react";
 
 interface EmailAccountEditorProps {
   clientId: string;
@@ -13,31 +13,51 @@ interface EmailAccountEditorProps {
 /**
  * EmailAccountEditor
  *
- * Configures the client-level IMAP + SMTP email connection stored in
- * clients.email_account JSONB. Shared across all automations for this client.
+ * Configures two separate email boxes stored in clients.email_account JSONB:
+ *   - IMAP inbox  (leads@domain) — polled every 5 min for new leads
+ *   - SMTP sender (victor@domain) — replies sent FROM here; client picks up conversation
  *
- * Credentials are saved via PATCH /api/admin/clients/[id].
+ * Saved as: { imap: { host, port, user, pass }, smtp: { host, port, user, pass } }
+ *
+ * Backward compat: reads old flat format (imap_host / email_user / email_pass)
+ * and migrates to new nested format on next save.
  */
 export function EmailAccountEditor({ clientId, token, emailAccount, onSaved }: EmailAccountEditorProps) {
   const ea = emailAccount ?? {};
 
-  const [emailUser, setEmailUser] = useState((ea.email_user as string) ?? "");
-  const [emailPass, setEmailPass] = useState((ea.email_pass as string) ?? "");
-  const [imapHost, setImapHost] = useState((ea.imap_host as string) ?? "");
-  const [imapPort, setImapPort] = useState((ea.imap_port as number) ?? 993);
-  const [smtpHost, setSmtpHost] = useState((ea.smtp_host as string) ?? "");
-  const [smtpPort, setSmtpPort] = useState((ea.smtp_port as number) ?? 465);
-  const [showPass, setShowPass] = useState(false);
+  // Detect new nested vs old flat format
+  const imapObj = (typeof ea.imap === "object" && ea.imap ? ea.imap : {}) as Record<string, unknown>;
+  const smtpObj = (typeof ea.smtp === "object" && ea.smtp ? ea.smtp : {}) as Record<string, unknown>;
+
+  // IMAP state — pre-fill from new format, fall back to legacy flat fields
+  const [imapUser, setImapUser] = useState((imapObj.user ?? ea.email_user ?? "") as string);
+  const [imapPass, setImapPass] = useState((imapObj.pass ?? ea.email_pass ?? "") as string);
+  const [imapHost, setImapHost] = useState((imapObj.host ?? ea.imap_host ?? "") as string);
+  const [imapPort, setImapPort] = useState(((imapObj.port ?? ea.imap_port ?? 993) as number));
+  const [showImapPass, setShowImapPass] = useState(false);
+
+  // SMTP state — pre-fill from new format, fall back to legacy flat fields
+  const [smtpUser, setSmtpUser] = useState((smtpObj.user ?? ea.email_user ?? "") as string);
+  const [smtpPass, setSmtpPass] = useState((smtpObj.pass ?? ea.email_pass ?? "") as string);
+  const [smtpHost, setSmtpHost] = useState((smtpObj.host ?? ea.smtp_host ?? ea.imap_host ?? "") as string);
+  const [smtpPort, setSmtpPort] = useState(((smtpObj.port ?? ea.smtp_port ?? 465) as number));
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
 
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isConfigured = !!(ea.imap_host && ea.email_user && ea.email_pass);
+  const isConfigured = !!(imapObj.host || ea.imap_host);
+  const connectedImapEmail = (imapObj.user ?? ea.email_user ?? "") as string;
+  const connectedSmtpEmail = (smtpObj.user ?? ea.email_user ?? "") as string;
 
   async function handleSave() {
-    if (!emailUser.trim() || !emailPass.trim() || !imapHost.trim() || !smtpHost.trim()) {
-      setError("Email, password, IMAP host, and SMTP host are all required.");
+    if (!imapUser.trim() || !imapPass.trim() || !imapHost.trim()) {
+      setError("Leads inbox: email, password, and IMAP host are required.");
+      return;
+    }
+    if (!smtpUser.trim() || !smtpPass.trim() || !smtpHost.trim()) {
+      setError("Reply sender: email, password, and SMTP host are required.");
       return;
     }
     setBusy(true);
@@ -48,12 +68,8 @@ export function EmailAccountEditor({ clientId, token, emailAccount, onSaved }: E
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         email_account: {
-          email_user: emailUser.trim(),
-          email_pass: emailPass.trim(),
-          imap_host: imapHost.trim(),
-          imap_port: imapPort,
-          smtp_host: smtpHost.trim(),
-          smtp_port: smtpPort,
+          imap: { user: imapUser.trim(), pass: imapPass.trim(), host: imapHost.trim(), port: imapPort },
+          smtp: { user: smtpUser.trim(), pass: smtpPass.trim(), host: smtpHost.trim(), port: smtpPort },
         },
       }),
     });
@@ -78,8 +94,8 @@ export function EmailAccountEditor({ clientId, token, emailAccount, onSaved }: E
       body: JSON.stringify({ email_account: null }),
     });
     setBusy(false);
-    setEmailUser(""); setEmailPass(""); setImapHost(""); setSmtpHost("");
-    setImapPort(993); setSmtpPort(465);
+    setImapUser(""); setImapPass(""); setImapHost(""); setImapPort(993);
+    setSmtpUser(""); setSmtpPass(""); setSmtpHost(""); setSmtpPort(465);
     onSaved();
   }
 
@@ -101,7 +117,7 @@ export function EmailAccountEditor({ clientId, token, emailAccount, onSaved }: E
             <h3 className="text-sm font-bold" style={{ color: "var(--adm-text)" }}>Email Account</h3>
             <p className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
               {isConfigured
-                ? `Connected: ${ea.email_user as string}`
+                ? `${connectedImapEmail} → ${connectedSmtpEmail}`
                 : "Not connected — automations cannot poll this client's inbox"}
             </p>
           </div>
@@ -116,105 +132,162 @@ export function EmailAccountEditor({ clientId, token, emailAccount, onSaved }: E
         )}
       </div>
 
-      {/* Info box */}
+      {/* Flow explanation */}
       <div
-        className="mb-4 rounded-lg p-3 text-[10px] leading-relaxed"
+        className="mb-4 flex items-center gap-2 rounded-lg p-3 text-[10px]"
         style={{ backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text-secondary)" }}
       >
-        <span className="font-semibold" style={{ color: "var(--adm-text)" }}>How it works: </span>
-        The cron job polls this inbox every 5 minutes, reads unread emails, generates a reply with Claude, and sends it
-        from this same address via SMTP — so the client&apos;s leads see a reply from their real email.
-        IMAP and SMTP typically use the same credentials on most mail providers.
+        <div className="flex flex-col items-center gap-0.5 text-center">
+          <span className="font-semibold" style={{ color: "var(--adm-text)" }}>Leads Inbox</span>
+          <span className="opacity-70">leads@domain</span>
+          <span className="opacity-50">IMAP — receives</span>
+        </div>
+        <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-40" />
+        <div className="flex-1 text-center leading-relaxed opacity-70">
+          Cron polls every 5 min → Claude generates reply
+        </div>
+        <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-40" />
+        <div className="flex flex-col items-center gap-0.5 text-center">
+          <span className="font-semibold" style={{ color: "var(--adm-text)" }}>Reply Sender</span>
+          <span className="opacity-70">victor@domain</span>
+          <span className="opacity-50">SMTP — sends</span>
+        </div>
       </div>
 
-      {/* Form */}
-      <div className="flex flex-col gap-3">
-        {/* Email + password */}
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Email Address</label>
-            <input
-              type="email"
-              value={emailUser}
-              onChange={(e) => setEmailUser(e.target.value)}
-              placeholder="victor@autoclicks.io"
-              className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none"
-              style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Password</label>
-            <div className="relative">
+      <div className="flex flex-col gap-5">
+        {/* ── IMAP section ── */}
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--adm-text-muted)" }}>
+            Leads Inbox (IMAP)
+          </label>
+          <p className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+            Dedicated inbox where leads land. New emails are polled every 5 minutes.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Email Address</label>
               <input
-                type={showPass ? "text" : "password"}
-                value={emailPass}
-                onChange={(e) => setEmailPass(e.target.value)}
-                placeholder="••••••••"
-                className="w-full rounded-md border px-2.5 py-1.5 pr-7 text-xs outline-none"
+                type="email"
+                value={imapUser}
+                onChange={(e) => setImapUser(e.target.value)}
+                placeholder="leads@autoclicks.io"
+                className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none"
                 style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
               />
-              <button
-                type="button"
-                onClick={() => setShowPass(!showPass)}
-                className="absolute right-2 top-1/2 -translate-y-1/2"
-                style={{ color: "var(--adm-text-muted)" }}
-              >
-                {showPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-              </button>
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Password</label>
+              <div className="relative">
+                <input
+                  type={showImapPass ? "text" : "password"}
+                  value={imapPass}
+                  onChange={(e) => setImapPass(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-md border px-2.5 py-1.5 pr-7 text-xs outline-none"
+                  style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+                />
+                <button type="button" onClick={() => setShowImapPass(!showImapPass)} className="absolute right-2 top-1/2 -translate-y-1/2" style={{ color: "var(--adm-text-muted)" }}>
+                  {showImapPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* IMAP */}
-        <div>
-          <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>
-            IMAP Server <span className="font-normal">(reads incoming email)</span>
-          </label>
           <div className="grid grid-cols-[1fr_80px] gap-2">
-            <input
-              type="text"
-              value={imapHost}
-              onChange={(e) => setImapHost(e.target.value)}
-              placeholder="mail.example.com"
-              className="rounded-md border px-2.5 py-1.5 text-xs outline-none"
-              style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
-            />
-            <input
-              type="number"
-              value={imapPort}
-              onChange={(e) => setImapPort(parseInt(e.target.value, 10) || 993)}
-              className="rounded-md border px-2.5 py-1.5 text-xs outline-none text-center"
-              style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
-            />
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>IMAP Host</label>
+              <input
+                type="text"
+                value={imapHost}
+                onChange={(e) => setImapHost(e.target.value)}
+                placeholder="mail.example.com"
+                className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none"
+                style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Port</label>
+              <input
+                type="number"
+                value={imapPort}
+                onChange={(e) => setImapPort(parseInt(e.target.value, 10) || 993)}
+                className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none text-center"
+                style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+              />
+            </div>
           </div>
-          <p className="mt-1 text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+          <p className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
             Default port: 993 (SSL). Siteground: gnldm1093.siteground.biz
           </p>
         </div>
 
-        {/* SMTP */}
-        <div>
-          <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>
-            SMTP Server <span className="font-normal">(sends replies)</span>
+        {/* Divider with arrow */}
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1" style={{ backgroundColor: "var(--adm-border)" }} />
+          <ArrowRight className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--adm-text-muted)" }} />
+          <div className="h-px flex-1" style={{ backgroundColor: "var(--adm-border)" }} />
+        </div>
+
+        {/* ── SMTP section ── */}
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--adm-text-muted)" }}>
+            Reply Sender (SMTP)
           </label>
-          <div className="grid grid-cols-[1fr_80px] gap-2">
-            <input
-              type="text"
-              value={smtpHost}
-              onChange={(e) => setSmtpHost(e.target.value)}
-              placeholder="mail.example.com"
-              className="rounded-md border px-2.5 py-1.5 text-xs outline-none"
-              style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
-            />
-            <input
-              type="number"
-              value={smtpPort}
-              onChange={(e) => setSmtpPort(parseInt(e.target.value, 10) || 465)}
-              className="rounded-md border px-2.5 py-1.5 text-xs outline-none text-center"
-              style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
-            />
+          <p className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+            Replies are sent FROM this address. The lead sees it and continues the conversation here — so use the client&apos;s real personal email.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Email Address</label>
+              <input
+                type="email"
+                value={smtpUser}
+                onChange={(e) => setSmtpUser(e.target.value)}
+                placeholder="victor@autoclicks.io"
+                className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none"
+                style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Password</label>
+              <div className="relative">
+                <input
+                  type={showSmtpPass ? "text" : "password"}
+                  value={smtpPass}
+                  onChange={(e) => setSmtpPass(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-md border px-2.5 py-1.5 pr-7 text-xs outline-none"
+                  style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+                />
+                <button type="button" onClick={() => setShowSmtpPass(!showSmtpPass)} className="absolute right-2 top-1/2 -translate-y-1/2" style={{ color: "var(--adm-text-muted)" }}>
+                  {showSmtpPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            </div>
           </div>
-          <p className="mt-1 text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+          <div className="grid grid-cols-[1fr_80px] gap-2">
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>SMTP Host</label>
+              <input
+                type="text"
+                value={smtpHost}
+                onChange={(e) => setSmtpHost(e.target.value)}
+                placeholder="mail.example.com"
+                className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none"
+                style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Port</label>
+              <input
+                type="number"
+                value={smtpPort}
+                onChange={(e) => setSmtpPort(parseInt(e.target.value, 10) || 465)}
+                className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none text-center"
+                style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+              />
+            </div>
+          </div>
+          <p className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
             Default port: 465 (SSL). Usually the same server as IMAP.
           </p>
         </div>

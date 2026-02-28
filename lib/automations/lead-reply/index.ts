@@ -31,21 +31,33 @@ export class LeadReplyAutomation implements AutomationRunner {
       return { success: false, summary: "", error: "Missing from_email or message in payload" };
     }
 
-    if (!cfg.voice_samples?.length || !cfg.from_email) {
+    const customPrompt = (config.config.custom_prompt as string | undefined)?.trim();
+
+    if (!customPrompt && !cfg.voice_samples?.length) {
       return {
         success: false,
         summary: "",
-        error: "Automation not configured: missing voice_samples or from_email in client config",
+        error: "Automation not configured: add voice samples or a custom prompt override",
       };
     }
 
-    const systemPrompt = buildSystemPrompt({
-      businessName: cfg.business_name ?? "the business",
-      ownerName: cfg.owner_name ?? "the owner",
-      voiceSamples: cfg.voice_samples,
-      signature: cfg.signature ?? "",
-      customInstructions: cfg.custom_instructions as string | undefined,
-    });
+    if (!cfg.from_email) {
+      return {
+        success: false,
+        summary: "",
+        error: "Automation not configured: missing from_email in client config",
+      };
+    }
+
+    const systemPrompt = customPrompt
+      ? customPrompt
+      : buildSystemPrompt({
+          businessName: cfg.business_name ?? "the business",
+          ownerName: cfg.owner_name ?? "the owner",
+          voiceSamples: cfg.voice_samples!,
+          signature: cfg.signature ?? "",
+          customInstructions: cfg.custom_instructions as string | undefined,
+        });
 
     const client = new Anthropic();
 

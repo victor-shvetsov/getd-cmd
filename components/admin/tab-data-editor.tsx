@@ -57,6 +57,7 @@ export const TAB_LABELS: Record<string, string> = {
   demand: "Demand",
   website: "Website",
   assets: "Assets",
+  automations: "Automations",
   execution: "Execution",
   sales: "Sales",
   activity: "Activity",
