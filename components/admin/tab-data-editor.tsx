@@ -59,6 +59,7 @@ export const TAB_LABELS: Record<string, string> = {
   assets: "Assets",
   execution: "Execution",
   sales: "Sales",
+  activity: "Activity",
 };
 
 /* ------------------------------------------------------------------ */

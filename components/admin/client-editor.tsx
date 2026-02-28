@@ -26,12 +26,14 @@ import {
   Globe,
   FolderOpen,
   ListChecks,
+  Activity,
 } from "lucide-react";
 import { SingleTabEditor, TAB_LABELS } from "@/components/admin/tab-data-editor";
 import { KnowledgeBank } from "@/components/admin/knowledge-bank";
 import { BrandingEditor } from "@/components/admin/branding-editor";
 import { SubscriptionsManager } from "@/components/admin/subscriptions-manager";
 import { SalesEditor } from "@/components/admin/editors/sales-editor";
+import { ActivityEditor } from "@/components/admin/editors/activity-editor";
 import { AdminThemeToggle } from "./admin-theme-toggle";
 
 /* ------------------------------------------------------------------ */
@@ -85,6 +87,10 @@ const CONTENT_TAB_ICONS: Record<TabKey, React.ElementType> = {
   execution:          ListChecks,
 };
 
+const ACTIVITY_SECTIONS: SectionDef[] = [
+  { key: "activity", label: "Activity", icon: Activity, kind: "fixed", group: "activity" },
+];
+
 const REVENUE_SECTIONS: SectionDef[] = [
   { key: "sales", label: "Sales", icon: ShoppingBag, kind: "fixed", group: "revenue" },
 ];
@@ -131,7 +137,7 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
 
   // Build the flat section list from client tabs
   const contentSections: SectionDef[] = (response?.tabs ?? [])
-    .filter((t) => t.tab_key !== "sales") // sales has its own dedicated editor
+    .filter((t) => t.tab_key !== "sales" && t.tab_key !== "activity") // these have dedicated editors
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((t) => ({
       key: `tab:${t.tab_key}`,
@@ -144,7 +150,7 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
 
   // Also add any missing tabs that can be created
   const existingTabKeys = new Set((response?.tabs ?? []).map((t) => t.tab_key));
-  const creatableTabKeys = TAB_KEYS.filter((k) => !existingTabKeys.has(k) && k !== "sales");
+  const creatableTabKeys = TAB_KEYS.filter((k) => !existingTabKeys.has(k) && k !== "sales" && k !== "activity");
   const creatableSections: SectionDef[] = creatableTabKeys.map((k) => ({
     key: `tab:${k}`,
     label: TAB_LABELS[k] ?? k,
@@ -156,6 +162,7 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
 
   const allSections = [
     ...FIXED_SECTIONS,
+    ...ACTIVITY_SECTIONS,
     ...contentSections,
     ...creatableSections,
     ...REVENUE_SECTIONS,
@@ -356,6 +363,11 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
               </>
             )}
           </div>
+        )}
+
+        {/* Activity */}
+        {activeSection === "activity" && (
+          <ActivityEditor clientId={clientId} token={token} />
         )}
 
         {/* Sales */}
