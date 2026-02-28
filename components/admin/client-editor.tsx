@@ -72,9 +72,8 @@ interface SectionDef {
 }
 
 const FIXED_SECTIONS: SectionDef[] = [
-  { key: "general",       label: "General",   icon: Settings2,  kind: "fixed",   group: "setup" },
-  { key: "branding",      label: "Branding",  icon: Palette,    kind: "fixed",   group: "setup" },
-  { key: "subscriptions", label: "Billing",   icon: CreditCard, kind: "fixed",   group: "setup" },
+  { key: "general",  label: "General",  icon: Settings2, kind: "fixed", group: "setup" },
+  { key: "branding", label: "Branding", icon: Palette,   kind: "fixed", group: "setup" },
 ];
 
 const CONTENT_TAB_ICONS: Record<TabKey, React.ElementType> = {
@@ -332,21 +331,31 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
           <BrandingEditor client={client} token={token} onSave={() => { mutate(); onSave(); }} />
         )}
 
-        {/* Billing */}
-        {activeSection === "subscriptions" && (
-          <SubscriptionsManager clientId={clientId} token={token} />
-        )}
-
         {/* Content tabs -- each renders SingleTabEditor inline */}
+        {/* Execution also includes Subscriptions (billing) below the tab editor */}
         {isContentTab && activeTabKey && (
-          <SingleTabEditor
-            key={activeTabKey}
-            clientId={clientId}
-            token={token}
-            tabKey={activeTabKey}
-            defaultLanguage={client.default_language}
-            availableLanguages={client.available_languages}
-          />
+          <div className="flex flex-col gap-6">
+            <SingleTabEditor
+              key={activeTabKey}
+              clientId={clientId}
+              token={token}
+              tabKey={activeTabKey}
+              defaultLanguage={client.default_language}
+              availableLanguages={client.available_languages}
+            />
+            {activeTabKey === "execution" && (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1" style={{ backgroundColor: "var(--adm-border)" }} />
+                  <span className="flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>
+                    <CreditCard className="h-3.5 w-3.5" /> Recurring Services
+                  </span>
+                  <div className="h-px flex-1" style={{ backgroundColor: "var(--adm-border)" }} />
+                </div>
+                <SubscriptionsManager clientId={clientId} token={token} />
+              </>
+            )}
+          </div>
         )}
 
         {/* Sales */}
