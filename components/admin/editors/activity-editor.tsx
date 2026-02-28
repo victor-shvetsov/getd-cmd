@@ -228,6 +228,7 @@ function EntryRow({
   const [title, setTitle] = useState(entry.title);
   const [description, setDescription] = useState(entry.description ?? "");
   const [category, setCategory] = useState(entry.category ?? "general");
+  const [date, setDate] = useState(entry.created_at.slice(0, 10));
   const [busy, setBusy] = useState(false);
 
   const cat = CAT_MAP[entry.category ?? "general"] ?? CAT_MAP.general;
@@ -235,11 +236,15 @@ function EntryRow({
 
   const handleSave = async () => {
     setBusy(true);
-    await onUpdate(entry.id, {
+    const updates: Partial<ActivityEntry> = {
       title: title.trim(),
       description: description.trim() || null,
       category,
-    });
+    };
+    if (date !== entry.created_at.slice(0, 10)) {
+      updates.created_at = new Date(date + "T12:00:00Z").toISOString();
+    }
+    await onUpdate(entry.id, updates);
     setBusy(false);
     setEditing(false);
   };
@@ -275,16 +280,25 @@ function EntryRow({
           className="rounded-md border px-2 py-1.5 text-xs outline-none resize-none"
           style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
         />
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="rounded-md border px-2 py-1.5 text-xs outline-none"
-          style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
+        <div className="flex gap-2">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="flex-1 rounded-md border px-2 py-1.5 text-xs outline-none"
+            style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+          >
+            {CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="rounded-md border px-2 py-1.5 text-xs outline-none"
+            style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
+          />
+        </div>
         <div className="flex gap-2">
           <button
             onClick={handleSave}
@@ -295,7 +309,7 @@ function EntryRow({
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
           </button>
           <button
-            onClick={() => { setEditing(false); setTitle(entry.title); setDescription(entry.description ?? ""); setCategory(entry.category ?? "general"); }}
+            onClick={() => { setEditing(false); setTitle(entry.title); setDescription(entry.description ?? ""); setCategory(entry.category ?? "general"); setDate(entry.created_at.slice(0, 10)); }}
             className="flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px]"
             style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-secondary)" }}
           >
