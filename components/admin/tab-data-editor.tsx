@@ -59,13 +59,14 @@ interface TabDataEditorProps {
   availableLanguages: string[];
 }
 
-const TAB_LABELS: Record<TabKey, string> = {
+const TAB_LABELS: Record<string, string> = {
   brief: "Brief",
   marketing_channels: "Marketing Channels",
   demand: "Demand",
   website: "Website",
   assets: "Assets",
   execution: "Execution",
+  sales: "Sales",
 };
 
 /* ------------------------------------------------------------------ */
@@ -570,26 +571,33 @@ export function TabDataEditor({ clientId, token, defaultLanguage, availableLangu
         </div>
       )}
 
-      {/* Tab selector */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {tabs
-          .sort((a, b) => a.sort_order - b.sort_order)
-          .map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: activeTab === tab.id ? "var(--adm-accent-bg)" : "transparent",
-                color: activeTab === tab.id ? "var(--adm-accent-text)" : "var(--adm-text-muted)",
-                border: activeTab === tab.id ? "1px solid color-mix(in srgb, var(--adm-accent) 20%, transparent)" : "1px solid transparent",
-              }}
-            >
-              <GripVertical className="h-3 w-3 opacity-30" />
-              {TAB_LABELS[tab.tab_key]}
-              {!tab.is_visible && <EyeOff className="h-3 w-3 text-[var(--adm-text-secondary)]" />}
-            </button>
-          ))}
+      {/* Tab selector -- segmented control style */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div
+          className="flex gap-0.5 rounded-lg p-1"
+          style={{ backgroundColor: "var(--adm-surface-2)" }}
+        >
+          {tabs
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold transition-all"
+                  style={{
+                    backgroundColor: active ? "var(--adm-surface)" : "transparent",
+                    color: active ? "var(--adm-text)" : "var(--adm-text-muted)",
+                    boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                  }}
+                >
+                  {TAB_LABELS[tab.tab_key] ?? tab.tab_key}
+                  {!tab.is_visible && <EyeOff className="h-3 w-3 opacity-50" />}
+                </button>
+              );
+            })}
+        </div>
 
         {missingKeys.length > 0 && !isTranslationMode && (
           <div className="relative group">
@@ -604,7 +612,7 @@ export function TabDataEditor({ clientId, token, defaultLanguage, availableLangu
                   onClick={() => handleAddTab(key)}
                   className="px-3 py-1.5 text-left text-xs text-[var(--adm-text-secondary)] transition-colors hover:bg-[var(--adm-surface-2)]"
                 >
-                  {TAB_LABELS[key]}
+                  {TAB_LABELS[key] ?? key}
                 </button>
               ))}
             </div>
@@ -615,9 +623,10 @@ export function TabDataEditor({ clientId, token, defaultLanguage, availableLangu
       {/* Active tab editor */}
       {currentTab && schema && (
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
+          {/* Tab toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold">{TAB_LABELS[currentTab.tab_key]}</h3>
+              <h3 className="text-sm font-bold">{TAB_LABELS[currentTab.tab_key] ?? currentTab.tab_key}</h3>
               {!isTranslationMode && (
                 <button
                   onClick={() => handleToggleVisibility(currentTab.id, currentTab.is_visible)}
@@ -650,25 +659,6 @@ export function TabDataEditor({ clientId, token, defaultLanguage, availableLangu
                 {autoFilling ? "Generating..." : "Auto-fill from KB"}
               </button>
             )}
-            <button
-              onClick={handleSaveData}
-              disabled={saving || (!isDirty && !justSaved) || (jsonMode && !!jsonError)}
-              className={`flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all ${
-                justSaved
-                  ? "bg-emerald-600 text-white"
-                  : isDirty
-                    ? "bg-[var(--adm-accent)] text-white hover:bg-[var(--adm-accent-hover)]"
-                    : "border border-[var(--adm-border)] text-[var(--adm-text-muted)] opacity-50 cursor-default"
-              }`}
-            >
-              {justSaved ? (
-                <><Check className="h-3.5 w-3.5" /> Saved</>
-              ) : saving ? (
-                <><Save className="h-3.5 w-3.5 animate-pulse" /> Saving...</>
-              ) : (
-                <><Save className="h-3.5 w-3.5" /> {isTranslationMode ? `Save ${editLang.toUpperCase()} Translation` : "Save Data"}</>
-              )}
-            </button>
           </div>
 
           {jsonMode ? (
@@ -712,6 +702,40 @@ export function TabDataEditor({ clientId, token, defaultLanguage, availableLangu
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Sticky save bar */}
+      {currentTab && (isDirty || justSaved) && (
+        <div
+          className="sticky bottom-4 z-20 flex items-center justify-between rounded-xl border px-5 py-3 shadow-lg"
+          style={{
+            borderColor: isDirty ? "var(--adm-accent)" : "var(--adm-border)",
+            backgroundColor: "var(--adm-surface)",
+          }}
+        >
+          <span className="text-xs font-medium" style={{ color: "var(--adm-text-secondary)" }}>
+            {justSaved ? "Changes saved" : `Unsaved changes to ${TAB_LABELS[currentTab.tab_key] ?? currentTab.tab_key}`}
+          </span>
+          <button
+            onClick={handleSaveData}
+            disabled={saving || (!isDirty && !justSaved) || (jsonMode && !!jsonError)}
+            className={`flex h-8 items-center gap-1.5 rounded-lg px-4 text-xs font-semibold transition-all ${
+              justSaved
+                ? "bg-emerald-600 text-white"
+                : isDirty
+                  ? "bg-[var(--adm-accent)] text-white hover:bg-[var(--adm-accent-hover)]"
+                  : "border border-[var(--adm-border)] text-[var(--adm-text-muted)] opacity-50 cursor-default"
+            }`}
+          >
+            {justSaved ? (
+              <><Check className="h-3.5 w-3.5" /> Saved</>
+            ) : saving ? (
+              <><Save className="h-3.5 w-3.5 animate-pulse" /> Saving...</>
+            ) : (
+              <><Save className="h-3.5 w-3.5" /> {isTranslationMode ? `Save ${editLang.toUpperCase()}` : "Save Data"}</>
+            )}
+          </button>
         </div>
       )}
 
