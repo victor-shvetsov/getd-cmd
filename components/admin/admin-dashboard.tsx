@@ -3,11 +3,19 @@
 import { useCallback, useState } from "react";
 import useSWR from "swr";
 import type { ClientRow } from "@/lib/types";
-import { Plus, LogOut, ExternalLink, Copy, Check, ImageIcon, Activity } from "lucide-react";
+import { Plus, LogOut, ExternalLink, Copy, Check, ImageIcon, Activity, Database } from "lucide-react";
 import Image from "next/image";
 import { ClientEditor } from "@/components/admin/client-editor";
 import { HealthCheck } from "@/components/admin/health-check";
 import { AdminThemeToggle } from "./admin-theme-toggle";
+
+function getSupabaseTableUrl(table: string): string | null {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return null;
+  const match = base.match(/https:\/\/([^.]+)\.supabase\.co/);
+  if (!match) return null;
+  return `https://supabase.com/dashboard/project/${match[1]}/editor/${table}`;
+}
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -261,6 +269,18 @@ export function AdminDashboard({ onLogout, token, theme, toggleTheme }: AdminDas
                   >
                     <ExternalLink className="h-3 w-3" />
                   </a>
+                  {getSupabaseTableUrl("sales_entries") && (
+                    <a
+                      href={getSupabaseTableUrl("sales_entries")!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-7 items-center gap-1 rounded-md px-2.5 text-xs transition-colors"
+                      style={{ backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text-secondary)" }}
+                      title="Open sales_entries in Supabase"
+                    >
+                      <Database className="h-3 w-3" />
+                    </a>
+                  )}
                 </div>
               </div>
             ))}
