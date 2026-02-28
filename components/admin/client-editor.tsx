@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import useSWR from "swr";
-import type { ClientRow, ClientType } from "@/lib/types";
-import { CLIENT_TYPES, CLIENT_TYPE_LABELS } from "@/lib/types";
+import type { ClientRow, ClientType, TabKey } from "@/lib/types";
+import { CLIENT_TYPES, CLIENT_TYPE_LABELS, TAB_KEYS } from "@/lib/types";
 import {
   ArrowLeft,
   Save,
@@ -20,18 +20,27 @@ import {
   CreditCard,
   ShoppingBag,
   Brain,
-  LayoutGrid,
+  FileText,
+  Megaphone,
+  TrendingUp,
+  Globe,
+  FolderOpen,
+  ListChecks,
 } from "lucide-react";
-import { TabDataEditor } from "@/components/admin/tab-data-editor";
+import { SingleTabEditor, TAB_LABELS } from "@/components/admin/tab-data-editor";
 import { KnowledgeBank } from "@/components/admin/knowledge-bank";
 import { BrandingEditor } from "@/components/admin/branding-editor";
 import { SubscriptionsManager } from "@/components/admin/subscriptions-manager";
 import { SalesEditor } from "@/components/admin/editors/sales-editor";
 import { AdminThemeToggle } from "./admin-theme-toggle";
 
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
 interface ClientResponse {
   client: ClientRow;
-  tabs: unknown[];
+  tabs: { tab_key: TabKey; sort_order: number; is_visible: boolean }[];
   translations: unknown[];
   tabTranslations: unknown[];
 }
@@ -46,31 +55,60 @@ interface ClientEditorProps {
   toggleTheme: () => void;
 }
 
-type EditorSection = "general" | "branding" | "subscriptions" | "sales" | "knowledge" | "tabs";
+/* ------------------------------------------------------------------ */
+/*  Section definitions -- flat, one level                             */
+/* ------------------------------------------------------------------ */
 
-const SECTIONS: { key: EditorSection; label: string; icon: React.ElementType }[] = [
-  { key: "general", label: "General", icon: Settings2 },
-  { key: "branding", label: "Branding", icon: Palette },
-  { key: "subscriptions", label: "Billing", icon: CreditCard },
-  { key: "sales", label: "Sales", icon: ShoppingBag },
-  { key: "knowledge", label: "Knowledge", icon: Brain },
-  { key: "tabs", label: "Tab Data", icon: LayoutGrid },
+// "fixed" sections always present; "content" sections come from client_tabs
+type SectionKind = "fixed" | "content";
+
+interface SectionDef {
+  key: string;
+  label: string;
+  icon: React.ElementType;
+  kind: SectionKind;
+  group: "setup" | "content" | "revenue" | "ai";
+  tabKey?: TabKey; // for content sections
+}
+
+const FIXED_SECTIONS: SectionDef[] = [
+  { key: "general",       label: "General",   icon: Settings2,  kind: "fixed",   group: "setup" },
+  { key: "branding",      label: "Branding",  icon: Palette,    kind: "fixed",   group: "setup" },
+  { key: "subscriptions", label: "Billing",   icon: CreditCard, kind: "fixed",   group: "setup" },
 ];
+
+const CONTENT_TAB_ICONS: Record<TabKey, React.ElementType> = {
+  brief:              FileText,
+  marketing_channels: Megaphone,
+  demand:             TrendingUp,
+  website:            Globe,
+  assets:             FolderOpen,
+  execution:          ListChecks,
+};
+
+const REVENUE_SECTIONS: SectionDef[] = [
+  { key: "sales", label: "Sales", icon: ShoppingBag, kind: "fixed", group: "revenue" },
+];
+
+const AI_SECTIONS: SectionDef[] = [
+  { key: "knowledge", label: "Knowledge", icon: Brain, kind: "fixed", group: "ai" },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Main component                                                     */
+/* ------------------------------------------------------------------ */
 
 export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme, toggleTheme }: ClientEditorProps) {
   const authFetcher = useCallback(
-    (url: string) =>
-      fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+    (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
     [token]
   );
 
-  const { data: response, mutate } = useSWR<ClientResponse>(
-    `/api/admin/clients/${clientId}`,
-    authFetcher
-  );
+  const { data: response, mutate } = useSWR<ClientResponse>(`/api/admin/clients/${clientId}`, authFetcher);
   const client = response?.client;
-  const [section, setSection] = useState<EditorSection>("general");
+  const [activeSection, setActiveSection] = useState("general");
   const [saving, setSaving] = useState(false);
+  const tabBarRef = useRef<HTMLDivElement>(null);
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -92,6 +130,46 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
     }
   }, [client]);
 
+  // Build the flat section list from client tabs
+  const contentSections: SectionDef[] = (response?.tabs ?? [])
+    .filter((t) => t.tab_key !== "sales") // sales has its own dedicated editor
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((t) => ({
+      key: `tab:${t.tab_key}`,
+      label: TAB_LABELS[t.tab_key] ?? t.tab_key,
+      icon: CONTENT_TAB_ICONS[t.tab_key] ?? FileText,
+      kind: "content" as const,
+      group: "content" as const,
+      tabKey: t.tab_key,
+    }));
+
+  // Also add any missing tabs that can be created
+  const existingTabKeys = new Set((response?.tabs ?? []).map((t) => t.tab_key));
+  const creatableTabKeys = TAB_KEYS.filter((k) => !existingTabKeys.has(k) && k !== "sales");
+  const creatableSections: SectionDef[] = creatableTabKeys.map((k) => ({
+    key: `tab:${k}`,
+    label: TAB_LABELS[k] ?? k,
+    icon: CONTENT_TAB_ICONS[k] ?? FileText,
+    kind: "content" as const,
+    group: "content" as const,
+    tabKey: k,
+  }));
+
+  const allSections = [
+    ...FIXED_SECTIONS,
+    ...contentSections,
+    ...creatableSections,
+    ...REVENUE_SECTIONS,
+    ...AI_SECTIONS,
+  ];
+
+  // Scroll the active tab into view
+  useEffect(() => {
+    if (!tabBarRef.current) return;
+    const btn = tabBarRef.current.querySelector(`[data-section="${activeSection}"]`) as HTMLElement | null;
+    if (btn) btn.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+  }, [activeSection]);
+
   const handleSaveGeneral = useCallback(async () => {
     setSaving(true);
     const langs = languages.split(",").map((l) => l.trim()).filter(Boolean);
@@ -99,13 +177,8 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({
-        name,
-        slug,
-        pin,
-        client_type: clientType,
-        project_objective: objective,
-        default_language: defaultLang,
-        available_languages: langs,
+        name, slug, pin, client_type: clientType, project_objective: objective,
+        default_language: defaultLang, available_languages: langs,
       }),
     });
     await mutate();
@@ -121,13 +194,14 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
     );
   }
 
+  // Determine if activeSection is a content tab
+  const isContentTab = activeSection.startsWith("tab:");
+  const activeTabKey = isContentTab ? activeSection.replace("tab:", "") as TabKey : null;
+
   return (
     <div className="min-h-dvh" style={{ backgroundColor: "var(--adm-bg)", color: "var(--adm-text)" }}>
-      {/* -- Header -- */}
-      <header
-        className="sticky top-0 z-30"
-        style={{ borderBottom: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface)" }}
-      >
+      {/* ---- Header ---- */}
+      <header className="sticky top-0 z-30" style={{ borderBottom: "1px solid var(--adm-border)", backgroundColor: "var(--adm-surface)" }}>
         <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-3">
           <div className="flex items-center gap-3">
             <button
@@ -150,105 +224,88 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
           <div className="flex items-center gap-2">
             <AdminThemeToggle theme={theme} toggle={toggleTheme} />
             <a
-              href={`/${client.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={`/${client.slug}`} target="_blank" rel="noopener noreferrer"
               className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors hover:opacity-80"
               style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-secondary)" }}
             >
-              <Eye className="h-3.5 w-3.5" />
-              Preview
-              <ExternalLink className="h-3 w-3" />
+              <Eye className="h-3.5 w-3.5" /> Preview <ExternalLink className="h-3 w-3" />
             </a>
           </div>
         </div>
 
-        {/* -- Section tabs as pills -- */}
+        {/* ---- Flat tab bar ---- */}
         <div className="mx-auto max-w-4xl px-5 pb-2">
           <div
-            className="flex gap-1 overflow-x-auto rounded-lg p-1"
-            style={{ backgroundColor: "var(--adm-surface-2)" }}
+            ref={tabBarRef}
+            className="flex gap-0.5 overflow-x-auto rounded-lg p-1 scrollbar-none"
+            style={{ backgroundColor: "var(--adm-surface-2)", msOverflowStyle: "none", scrollbarWidth: "none" }}
           >
-            {SECTIONS.map((s) => {
+            {allSections.map((s, i) => {
               const Icon = s.icon;
-              const active = section === s.key;
+              const active = activeSection === s.key;
+              // Add a visual divider between groups
+              const prevGroup = i > 0 ? allSections[i - 1].group : s.group;
+              const showDivider = i > 0 && prevGroup !== s.group;
+
               return (
-                <button
-                  key={s.key}
-                  onClick={() => setSection(s.key)}
-                  className="flex flex-shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold transition-all"
-                  style={{
-                    backgroundColor: active ? "var(--adm-surface)" : "transparent",
-                    color: active ? "var(--adm-text)" : "var(--adm-text-muted)",
-                    boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-                  }}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {s.label}
-                </button>
+                <div key={s.key} className="flex items-center">
+                  {showDivider && (
+                    <div className="mx-1 h-4 w-px flex-shrink-0" style={{ backgroundColor: "var(--adm-border)" }} />
+                  )}
+                  <button
+                    data-section={s.key}
+                    onClick={() => setActiveSection(s.key)}
+                    className="flex flex-shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-all"
+                    style={{
+                      backgroundColor: active ? "var(--adm-surface)" : "transparent",
+                      color: active ? "var(--adm-text)" : "var(--adm-text-muted)",
+                      boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                    }}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{s.label}</span>
+                  </button>
+                </div>
               );
             })}
           </div>
         </div>
       </header>
 
-      {/* -- Content -- */}
+      {/* ---- Content ---- */}
       <main className="mx-auto max-w-4xl px-5 py-6">
-        {section === "general" && (
+        {/* General */}
+        {activeSection === "general" && (
           <div className="flex flex-col gap-6">
-            {/* Project Objective */}
-            <div
-              className="rounded-xl border p-5"
-              style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}
-            >
-              <label className="mb-1.5 block text-xs font-bold" style={{ color: "var(--adm-text)" }}>
-                Project Objective
-              </label>
+            <div className="rounded-xl border p-5" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}>
+              <label className="mb-1.5 block text-xs font-bold" style={{ color: "var(--adm-text)" }}>Project Objective</label>
               <p className="mb-3 text-[11px] leading-relaxed" style={{ color: "var(--adm-text-muted)" }}>
-                The core business goal this project serves. This anchors all AI-generated questions, autofill content, and gap analysis. Write it from the client{"'"}s perspective.
+                The core business goal this project serves. This anchors all AI-generated content and gap analysis.
               </p>
               <textarea
-                value={objective}
-                onChange={(e) => setObjective(e.target.value)}
-                placeholder='e.g. "Bring dental implant patients from across Europe to our clinic in Moldova. We offer premium quality at 60% lower cost than Western Europe."'
+                value={objective} onChange={(e) => setObjective(e.target.value)}
+                placeholder='e.g. "Bring dental implant patients from across Europe to our clinic in Moldova."'
                 rows={3}
                 className="w-full resize-none rounded-lg border px-3 py-2.5 text-sm leading-relaxed outline-none transition-colors focus:ring-1"
-                style={{
-                  borderColor: "var(--adm-border)",
-                  backgroundColor: "var(--adm-bg)",
-                  color: "var(--adm-text)",
-                  "--tw-ring-color": "var(--adm-accent)",
-                } as React.CSSProperties}
+                style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-bg)", color: "var(--adm-text)", "--tw-ring-color": "var(--adm-accent)" } as React.CSSProperties}
               />
             </div>
-
-            {/* Identity */}
             <SectionCard title="Identity">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Client Name" value={name} onChange={setName} />
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-medium" style={{ color: "var(--adm-text-secondary)" }}>Client Type</label>
                   <select
-                    value={clientType}
-                    onChange={(e) => setClientType(e.target.value as ClientType)}
+                    value={clientType} onChange={(e) => setClientType(e.target.value as ClientType)}
                     className="h-9 rounded-lg border px-3 text-sm outline-none focus:ring-1"
-                    style={{
-                      borderColor: "var(--adm-border)",
-                      backgroundColor: "var(--adm-surface)",
-                      color: "var(--adm-text)",
-                      "--tw-ring-color": "var(--adm-accent)",
-                    } as React.CSSProperties}
+                    style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)", "--tw-ring-color": "var(--adm-accent)" } as React.CSSProperties}
                   >
-                    {CLIENT_TYPES.map((ct) => (
-                      <option key={ct} value={ct}>{CLIENT_TYPE_LABELS[ct]}</option>
-                    ))}
+                    {CLIENT_TYPES.map((ct) => <option key={ct} value={ct}>{CLIENT_TYPE_LABELS[ct]}</option>)}
                   </select>
                   <p className="text-[10px]" style={{ color: "var(--adm-text-placeholder)" }}>Affects channel presets and dashboard UI</p>
                 </div>
               </div>
             </SectionCard>
-
-            {/* Access */}
             <SectionCard title="Access">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="URL Slug" value={slug} onChange={setSlug} hint="Used in the URL: /your-slug" />
@@ -257,36 +314,43 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
                 <Field label="Available Languages" value={languages} onChange={setLanguages} hint="Comma-separated: en, ro, da" />
               </div>
             </SectionCard>
-
-            {/* Save button */}
             <div className="flex justify-end">
               <button
-                onClick={handleSaveGeneral}
-                disabled={saving}
+                onClick={handleSaveGeneral} disabled={saving}
                 className="flex h-9 items-center gap-1.5 rounded-lg px-5 text-xs font-semibold text-white transition-colors disabled:opacity-50"
                 style={{ backgroundColor: "var(--adm-accent)" }}
               >
-                <Save className="h-3.5 w-3.5" />
-                {saving ? "Saving..." : "Save Changes"}
+                <Save className="h-3.5 w-3.5" /> {saving ? "Saving..." : "Save Changes"}
               </button>
             </div>
-
-            <DangerZone
-              clientName={client.name}
-              clientId={clientId}
-              token={token}
-              onReset={() => { mutate(); }}
-              onDelete={onDelete}
-            />
+            <DangerZone clientName={client.name} clientId={clientId} token={token} onReset={() => { mutate(); }} onDelete={onDelete} />
           </div>
         )}
-        {section === "branding" && (
+
+        {/* Branding */}
+        {activeSection === "branding" && (
           <BrandingEditor client={client} token={token} onSave={() => { mutate(); onSave(); }} />
         )}
-        {section === "subscriptions" && (
+
+        {/* Billing */}
+        {activeSection === "subscriptions" && (
           <SubscriptionsManager clientId={clientId} token={token} />
         )}
-        {section === "sales" && (
+
+        {/* Content tabs -- each renders SingleTabEditor inline */}
+        {isContentTab && activeTabKey && (
+          <SingleTabEditor
+            key={activeTabKey}
+            clientId={clientId}
+            token={token}
+            tabKey={activeTabKey}
+            defaultLanguage={client.default_language}
+            availableLanguages={client.available_languages}
+          />
+        )}
+
+        {/* Sales */}
+        {activeSection === "sales" && (
           <SalesEditor
             clientId={clientId}
             clientSlug={client.slug}
@@ -295,50 +359,51 @@ export function ClientEditor({ clientId, token, onBack, onSave, onDelete, theme,
             token={token}
           />
         )}
-        {section === "knowledge" && (
+
+        {/* Knowledge */}
+        {activeSection === "knowledge" && (
           <KnowledgeBank clientId={clientId} token={token} />
-        )}
-        {section === "tabs" && (
-          <TabDataEditor
-            clientId={clientId}
-            token={token}
-            defaultLanguage={client.default_language}
-            availableLanguages={client.available_languages}
-          />
         )}
       </main>
     </div>
   );
 }
 
-/* -- Reusable section card wrapper -- */
+/* ------------------------------------------------------------------ */
+/*  Reusable pieces                                                    */
+/* ------------------------------------------------------------------ */
+
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div
-      className="rounded-xl border p-5"
-      style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}
-    >
-      <h3 className="mb-4 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--adm-text-muted)" }}>
-        {title}
-      </h3>
+    <div className="rounded-xl border p-5" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}>
+      <h3 className="mb-4 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--adm-text-muted)" }}>{title}</h3>
       {children}
     </div>
   );
 }
 
-/* -- Danger Zone (unchanged logic, slightly cleaner) -- */
+function Field({ label, value, onChange, hint }: { label: string; value: string; onChange: (v: string) => void; hint?: string }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-medium" style={{ color: "var(--adm-text-secondary)" }}>{label}</label>
+      <input
+        type="text" value={value} onChange={(e) => onChange(e.target.value)}
+        className="h-9 rounded-lg border px-3 text-sm outline-none focus:ring-1"
+        style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)", "--tw-ring-color": "var(--adm-accent)" } as React.CSSProperties}
+      />
+      {hint && <p className="text-[10px]" style={{ color: "var(--adm-text-placeholder)" }}>{hint}</p>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Danger Zone                                                        */
+/* ------------------------------------------------------------------ */
+
 function DangerZone({
-  clientName,
-  clientId,
-  token,
-  onReset,
-  onDelete,
+  clientName, clientId, token, onReset, onDelete,
 }: {
-  clientName: string;
-  clientId: string;
-  token: string;
-  onReset: () => void;
-  onDelete: () => void;
+  clientName: string; clientId: string; token: string; onReset: () => void; onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -402,7 +467,6 @@ function DangerZone({
         </div>
         <ChevronDown className="h-4 w-4 transition-transform" style={{ color: "var(--adm-danger-text)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
       </button>
-
       {open && (
         <div className="border-t px-5 py-5" style={{ borderColor: "var(--adm-danger-text)" }}>
           <div className="flex flex-col gap-5">
@@ -476,20 +540,6 @@ function DangerZone({
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, hint }: { label: string; value: string; onChange: (v: string) => void; hint?: string }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-medium" style={{ color: "var(--adm-text-secondary)" }}>{label}</label>
-      <input
-        type="text" value={value} onChange={(e) => onChange(e.target.value)}
-        className="h-9 rounded-lg border px-3 text-sm outline-none focus:ring-1"
-        style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)", "--tw-ring-color": "var(--adm-accent)" } as React.CSSProperties}
-      />
-      {hint && <p className="text-[10px]" style={{ color: "var(--adm-text-placeholder)" }}>{hint}</p>}
     </div>
   );
 }
