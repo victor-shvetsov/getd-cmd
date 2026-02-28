@@ -43,8 +43,27 @@ export async function POST(req: NextRequest) {
 
   const fromRaw = (payload.from as string) ?? "";
   const subject = (payload.subject as string) ?? "";
-  // Prefer plain text; fall back to HTML
-  const emailBody = (payload.text as string) || (payload.html as string) || "";
+
+  // Prefer plain text; fall back to HTML.
+  // Resend often omits the body from the webhook payload — fetch it via API if missing.
+  let emailBody = (payload.text as string) || (payload.html as string) || "";
+
+  if (!emailBody) {
+    const emailId = payload.email_id as string | undefined;
+    if (emailId && process.env.RESEND_API_KEY) {
+      try {
+        const res = await fetch(`https://api.resend.com/emails/${emailId}`, {
+          headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+        });
+        if (res.ok) {
+          const email = await res.json() as Record<string, unknown>;
+          emailBody = (email.text as string) || (email.html as string) || "";
+        }
+      } catch (err) {
+        console.error("[inbound-lead] Failed to fetch email body from Resend API:", err);
+      }
+    }
+  }
 
   if (!toAddress || !emailBody) {
     return NextResponse.json({ error: "Missing 'to' or email body" }, { status: 400 });
