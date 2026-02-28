@@ -372,7 +372,7 @@ export function ReportView({ config }: ReportViewProps) {
       >
         <div
           ref={trackRef}
-          className="flex"
+          className="flex items-start"
           style={{
             transform: `translateX(${translateX}px)`,
             transition: isAnimating ? "transform 340ms cubic-bezier(0.25, 1, 0.5, 1)" : "none",
