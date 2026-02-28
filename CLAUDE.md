@@ -43,14 +43,14 @@ Local dev needs a `.env.local` file. Get values from Vercel project settings →
 Required env vars:
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://jjciiswzkaxlunjkwprp.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqY2lpc3d6a2F4bHVuamt3cHJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwMDA4MTEsImV4cCI6MjA4NjU3NjgxMX0.t7UwFzCBlyjKh2Vh336j73e78DkVWvGbRlDMiItkrWg
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqY2lpc3d6a2F4bHVuamt3cHJwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTAwMDgxMSwiZXhwIjoyMDg2NTc2ODExfQ.wLT8CM_DQzs7H-sfAy9DNJNmRt5-9z-DhUmRbYt7xkg
-STRIPE_SECRET_KEY=sk_test_51T175qIHVKbmQlntTFlyAaTIqdlIOnMB0ynhdCVy1Gr11YYeYH6L51OuMqU43fOjEIbfy3ikp9GlqyMd6EsMm26o00DwtpoqZT
-STRIPE_WEBHOOK_SECRET=whsec_M4Aab3sIMVQDLFYE7BD9J33ChwLZIYcJ
-ADMIN_PASSWORD=123456
-ANTHROPIC_API_KEY=
-RESEND_API_KEY=                   # resend.com — sending lead replies and review requests
-AUTOMATION_WEBHOOK_SECRET=        # any random string — secures /api/automations/[key]/trigger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
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<from Vercel env vars>
+SUPABASE_SERVICE_ROLE_KEY=<from Vercel env vars>
+STRIPE_SECRET_KEY=<from Vercel env vars>
+STRIPE_WEBHOOK_SECRET=<from Vercel env vars>
+ADMIN_PASSWORD=<from Vercel env vars>
+ANTHROPIC_API_KEY=<from Anthropic console>
+RESEND_API_KEY=<from resend.com>
+AUTOMATION_WEBHOOK_SECRET=<any random string>
 ```
 
 ---
