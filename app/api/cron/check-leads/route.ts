@@ -248,6 +248,7 @@ async function processMailbox({
           const fromName = parsed.from?.value?.[0]?.name ?? "";
           const subject = parsed.subject ?? "";
           const emailBody = parsed.text || parsed.html?.replace(/<[^>]*>/g, " ") || "";
+          const messageId = parsed.messageId ?? null;
 
           if (!fromEmail || !emailBody) {
             await client.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
@@ -258,6 +259,22 @@ async function processMailbox({
           if (fromEmail.toLowerCase() === imap.user.toLowerCase()) {
             await client.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
             continue;
+          }
+
+          // Deduplicate by Message-ID — guards against IMAP flag resets or
+          // the same email appearing twice (e.g. after a mailbox restore)
+          if (messageId) {
+            const { data: existingRun } = await supabase
+              .from("automation_runs")
+              .select("id")
+              .eq("automation_id", automationId)
+              .contains("payload", { imap_message_id: messageId })
+              .maybeSingle();
+
+            if (existingRun) {
+              await client.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
+              continue;
+            }
           }
 
           // Parse with Claude Haiku
@@ -307,6 +324,7 @@ async function processMailbox({
                 subject: leadParsed.subject || subject,
                 message: leadParsed.message,
                 lead_id: lead?.id ?? null,
+                imap_message_id: messageId,
               },
             });
             console.log(`[check-leads] ${slug}: queued reply to ${leadParsed.from_email} (delay ${replyDelayMinutes}m)`);
@@ -334,6 +352,7 @@ async function processMailbox({
                   subject: leadParsed.subject || subject,
                   message: leadParsed.message,
                   lead_id: lead?.id ?? null,
+                  imap_message_id: messageId,
                 },
                 input_summary: `Lead from ${leadParsed.from_email}`,
                 output_summary: result.summary,
@@ -346,6 +365,7 @@ async function processMailbox({
                 input_summary: `Lead from ${leadParsed.from_email}`,
                 output_summary: result.summary,
                 error: result.error ?? null,
+                payload: { imap_message_id: messageId },
               });
 
               if (result.success) {
