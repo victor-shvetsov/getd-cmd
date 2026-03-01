@@ -687,7 +687,7 @@ function LeadReplyConfigPanel({
 
       <TextareaField
         label="Voice Samples"
-        hint="Paste 1–3 example replies the owner would write. Separate samples with --- on its own line."
+        hint="Paste 7+ example replies the owner would write. More samples = better voice matching. Separate each with --- on its own line."
         value={voiceSamples}
         onChange={setVoiceSamples}
         placeholder={"Hi! Thanks for reaching out — we'd love to help.\n---\nGreat to hear from you! Let me know what you need and we'll sort it out."}
@@ -872,7 +872,7 @@ function ReviewCollectorConfigPanel({
       </div>
       <TextareaField
         label="Voice Samples"
-        hint="Paste 1–3 example messages the owner would send. Separate with --- on its own line."
+        hint="Paste 7+ example messages the owner would send. More samples = better voice matching. Separate each with --- on its own line."
         value={voiceSamples}
         onChange={setVoiceSamples}
         placeholder={"Thanks so much — it was a pleasure working with you! If you have a moment, a quick review would mean a lot.\n---\nReally glad we could help! We'd love to hear your feedback — it only takes a minute."}
@@ -945,7 +945,7 @@ function SocialPosterConfigPanel({
       />
       <TextareaField
         label="Voice Samples"
-        hint="Paste 1–3 example posts the owner would write. Separate with --- on its own line."
+        hint="Paste 7+ example posts the owner would write. More samples = better voice matching. Separate each with --- on its own line."
         value={voiceSamples}
         onChange={setVoiceSamples}
         placeholder={"Just finished another great project — so proud of the team 💪 Swipe to see the before & after.\n---\nNew week, new opportunities. Here's what we've been working on lately 👇"}
