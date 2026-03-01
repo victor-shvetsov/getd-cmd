@@ -1062,17 +1062,26 @@ interface ConversationThread {
   last_at: string;
 }
 
+interface VoiceProfile {
+  tone_descriptors: string[];
+  signature_phrases: string[];
+  summary: string;
+  extracted_at: string;
+  source_count: number;
+}
+
 interface ConversationsResponse {
   stats: ConversationStats;
   threads: ConversationThread[];
   recent: ConversationRow[];
+  voice_profile: VoiceProfile | null;
 }
 
 function AIVoiceTraining({ clientId, token }: { clientId: string; token: string }) {
   const authFetcher = (url: string) =>
     fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json());
 
-  const { data, isLoading } = useSWR<ConversationsResponse>(
+  const { data, isLoading, mutate } = useSWR<ConversationsResponse>(
     `/api/admin/clients/${clientId}/conversations`,
     authFetcher
   );
@@ -1080,26 +1089,105 @@ function AIVoiceTraining({ clientId, token }: { clientId: string; token: string 
   const [expandedThread, setExpandedThread] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
 
+  // Upload thread state
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploadText, setUploadText] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<{ imported: number } | { error: string } | null>(null);
+
+  // Extract voice state
+  const [extracting, setExtracting] = useState(false);
+  const [extractResult, setExtractResult] = useState<{ source_count: number; edited_count: number } | { error: string } | null>(null);
+
   const stats = data?.stats;
   const threads = data?.threads ?? [];
   const recent = data?.recent ?? [];
+  const voiceProfile = data?.voice_profile ?? null;
 
   const visibleThreads = showAll ? threads : threads.slice(0, 5);
+  const hasCorpus = stats && stats.total_conversations > 0;
+
+  async function handleUpload() {
+    if (!uploadText.trim()) return;
+    setUploading(true);
+    setUploadResult(null);
+    try {
+      const res = await fetch(`/api/admin/clients/${clientId}/conversations/upload-thread`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ raw_thread: uploadText }),
+      });
+      const json = await res.json() as { ok?: boolean; imported?: number; error?: string };
+      if (res.ok && json.imported) {
+        setUploadResult({ imported: json.imported });
+        setUploadText("");
+        void mutate();
+      } else {
+        setUploadResult({ error: json.error ?? "Upload failed" });
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleExtract() {
+    setExtracting(true);
+    setExtractResult(null);
+    try {
+      const res = await fetch(`/api/admin/clients/${clientId}/conversations/extract-voice`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json() as { ok?: boolean; source_count?: number; edited_count?: number; error?: string };
+      if (res.ok) {
+        setExtractResult({ source_count: json.source_count ?? 0, edited_count: json.edited_count ?? 0 });
+        void mutate(); // reload voice_profile from API
+      } else {
+        setExtractResult({ error: json.error ?? "Extraction failed" });
+      }
+    } finally {
+      setExtracting(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}>
+
       {/* Header */}
-      <div className="flex items-center gap-3 border-b px-4 py-3" style={{ borderColor: "var(--adm-border)" }}>
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: "var(--adm-accent-bg)" }}>
-          <Brain className="h-4 w-4" style={{ color: "var(--adm-accent-text)" }} />
+      <div className="flex items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: "var(--adm-border)" }}>
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: "var(--adm-accent-bg)" }}>
+            <Brain className="h-4 w-4" style={{ color: "var(--adm-accent-text)" }} />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>
+              AI Voice Training
+            </h3>
+            <p className="text-[11px]" style={{ color: "var(--adm-text-muted)" }}>
+              Email corpus → distilled voice profile → used in every AI reply
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>
-            AI Voice Training
-          </h3>
-          <p className="text-[11px]" style={{ color: "var(--adm-text-muted)" }}>
-            Email corpus captured from the monitored inbox — used to fine-tune the AI&apos;s voice
-          </p>
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setShowUpload(!showUpload); setUploadResult(null); }}
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-colors"
+            style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
+          >
+            <ArrowDownLeft className="h-3 w-3" />
+            Upload threads
+          </button>
+          <button
+            onClick={handleExtract}
+            disabled={extracting || !hasCorpus}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold text-white transition-colors disabled:opacity-40"
+            style={{ backgroundColor: "var(--adm-accent)" }}
+            title={!hasCorpus ? "Add emails to the corpus first" : "Run Claude to distill voice profile from corpus"}
+          >
+            {extracting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            {extracting ? "Extracting..." : "Extract voice"}
+          </button>
         </div>
       </div>
 
@@ -1107,148 +1195,299 @@ function AIVoiceTraining({ clientId, token }: { clientId: string; token: string 
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--adm-accent)" }} />
         </div>
-      ) : !stats || stats.total_conversations === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-4 pb-6 pt-2 text-center">
-          <Mail className="h-8 w-8 opacity-20" style={{ color: "var(--adm-text-muted)" }} />
-          <p className="text-xs font-medium" style={{ color: "var(--adm-text-muted)" }}>No conversations captured yet</p>
-          <p className="text-[11px]" style={{ color: "var(--adm-text-muted)", opacity: 0.7 }}>
-            Emails flowing through the client&apos;s monitored inbox will appear here automatically once the Lead Reply automation is active.
-          </p>
-        </div>
       ) : (
-        <div className="flex flex-col gap-4 px-4 pb-4">
-          {/* Stats */}
-          <div className="grid grid-cols-4 gap-2">
-            <StatPill label="Total emails" value={stats.total_conversations} />
-            <StatPill label="Inbound" value={stats.inbound} />
-            <StatPill label="AI replies sent" value={stats.ai_generated} />
-            <StatPill
-              label="Edited by client"
-              value={stats.ai_edited}
-              highlight={stats.ai_edited > 0}
-              tooltip="High-signal: client modified AI draft before sending"
-            />
-          </div>
+        <div className="flex flex-col gap-5 px-4 pb-4">
 
-          {/* Training quality bar */}
-          {stats.ai_generated > 0 && (
-            <div>
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-text-muted)" }}>
-                  Training corpus quality
-                </span>
-                <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
-                  {stats.ai_edited} edited / {stats.ai_generated} AI replies
-                </span>
+          {/* Upload area */}
+          {showUpload && (
+            <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)" }}>
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-semibold" style={{ color: "var(--adm-text)" }}>
+                  Paste email thread
+                </p>
+                <p className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                  Paste a full thread — any format (Gmail, Outlook, etc.). Claude extracts only the outgoing replies.
+                </p>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: "var(--adm-surface-2)" }}>
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${Math.round((stats.ai_edited / stats.ai_generated) * 100)}%`,
-                    backgroundColor: "var(--adm-accent)",
-                  }}
-                />
+              <textarea
+                value={uploadText}
+                onChange={(e) => setUploadText(e.target.value)}
+                placeholder={"From: casper@plumbing.dk\nTo: customer@example.com\nSubject: Re: Leaking tap\n\nHi John, thanks for reaching out — I can come by Thursday afternoon..."}
+                rows={8}
+                className="w-full resize-y rounded-lg border px-3 py-2 font-mono text-[11px] outline-none"
+                style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)" }}
+              />
+              {uploadResult && (
+                "imported" in uploadResult ? (
+                  <p className="text-[11px]" style={{ color: "#16a34a" }}>
+                    ✓ Imported {uploadResult.imported} outgoing repl{uploadResult.imported === 1 ? "y" : "ies"} into corpus
+                  </p>
+                ) : (
+                  <p className="text-[11px]" style={{ color: "var(--adm-danger-text)" }}>
+                    {uploadResult.error}
+                  </p>
+                )
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => { setShowUpload(false); setUploadText(""); setUploadResult(null); }}
+                  className="rounded-lg border px-3 py-1.5 text-[11px] font-medium"
+                  style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpload}
+                  disabled={uploading || !uploadText.trim()}
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
+                  style={{ backgroundColor: "var(--adm-accent)" }}
+                >
+                  {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUpRight className="h-3 w-3" />}
+                  {uploading ? "Parsing..." : "Add to corpus"}
+                </button>
               </div>
-              <p className="mt-1 text-[10px]" style={{ color: "var(--adm-text-muted)", opacity: 0.7 }}>
-                Edited replies are the highest training signal — they show exactly where the AI deviated from the client&apos;s voice.
+            </div>
+          )}
+
+          {/* Extract result flash */}
+          {extractResult && (
+            "error" in extractResult ? (
+              <p className="rounded-lg px-3 py-2 text-[11px]" style={{ backgroundColor: "color-mix(in srgb, red 8%, transparent)", color: "var(--adm-danger-text)" }}>
+                {extractResult.error}
+              </p>
+            ) : (
+              <p className="rounded-lg px-3 py-2 text-[11px]" style={{ backgroundColor: "color-mix(in srgb, #22c55e 10%, transparent)", color: "#16a34a" }}>
+                ✓ Voice profile extracted from {extractResult.source_count} emails ({extractResult.edited_count} edited). Voice samples updated in automation config.
+              </p>
+            )
+          )}
+
+          {/* Empty state */}
+          {!hasCorpus && !showUpload && (
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <Mail className="h-8 w-8 opacity-20" style={{ color: "var(--adm-text-muted)" }} />
+              <p className="text-xs font-medium" style={{ color: "var(--adm-text-muted)" }}>No corpus yet</p>
+              <p className="max-w-xs text-[11px]" style={{ color: "var(--adm-text-muted)", opacity: 0.7 }}>
+                Emails auto-capture when Lead Reply is active. Or paste existing threads using &ldquo;Upload threads&rdquo; above to get started immediately.
               </p>
             </div>
           )}
 
-          {/* Thread list */}
-          {threads.length > 0 && (
-            <div>
-              <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--adm-text-muted)" }}>
-                Contacts ({threads.length})
-              </h4>
-              <div className="flex flex-col gap-1.5">
-                {visibleThreads.map((thread) => {
-                  const isExpanded = expandedThread === thread.email;
-                  const threadMessages = recent.filter(
-                    (r) => r.from_email === thread.email || r.to_email === thread.email
-                  );
-                  return (
-                    <div key={thread.email} className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--adm-border)" }}>
-                      <button
-                        onClick={() => setExpandedThread(isExpanded ? null : thread.email)}
-                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--adm-surface-2)]"
-                      >
-                        <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold uppercase" style={{ backgroundColor: "var(--adm-accent-bg)", color: "var(--adm-accent-text)" }}>
-                          {thread.email[0]}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate text-[11px] font-medium" style={{ color: "var(--adm-text)" }}>{thread.email}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
-                              {thread.inbound} in · {thread.outbound} out
-                            </span>
-                            <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>·</span>
-                            <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
-                              {getTimeAgo(new Date(thread.last_at))}
-                            </span>
-                          </div>
-                        </div>
-                        {isExpanded ? (
-                          <ChevronUp className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--adm-text-muted)" }} />
-                        ) : (
-                          <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--adm-text-muted)" }} />
-                        )}
-                      </button>
-
-                      {isExpanded && threadMessages.length > 0 && (
-                        <div className="border-t flex flex-col gap-0" style={{ borderColor: "var(--adm-border)" }}>
-                          {threadMessages.slice(0, 8).map((msg) => (
-                            <div key={msg.id} className="flex gap-3 px-3 py-2.5 border-b last:border-b-0" style={{ borderColor: "var(--adm-border)" }}>
-                              <div className="mt-0.5 flex-shrink-0">
-                                {msg.direction === "inbound" ? (
-                                  <ArrowDownLeft className="h-3.5 w-3.5" style={{ color: "var(--adm-text-muted)" }} />
-                                ) : (
-                                  <ArrowUpRight className="h-3.5 w-3.5" style={{ color: "var(--adm-accent-text)" }} />
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-0.5">
-                                  <span className="text-[10px] font-semibold" style={{ color: msg.direction === "outbound" ? "var(--adm-accent-text)" : "var(--adm-text)" }}>
-                                    {msg.direction === "inbound" ? "Lead" : "Reply"}
-                                  </span>
-                                  {msg.was_edited && (
-                                    <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold" style={{ backgroundColor: "color-mix(in srgb, var(--adm-accent) 15%, transparent)", color: "var(--adm-accent-text)" }}>
-                                      edited
-                                    </span>
-                                  )}
-                                  <span className="ml-auto text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
-                                    {getTimeAgo(new Date(msg.sent_at))}
-                                  </span>
-                                </div>
-                                {msg.subject && (
-                                  <p className="text-[10px] font-medium mb-0.5 truncate" style={{ color: "var(--adm-text-secondary)" }}>
-                                    {msg.subject}
-                                  </p>
-                                )}
-                                <p className="text-[11px] leading-snug line-clamp-2" style={{ color: "var(--adm-text-secondary)" }}>
-                                  {msg.content.slice(0, 200)}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+          {hasCorpus && (
+            <>
+              {/* Corpus stats */}
+              <div className="grid grid-cols-4 gap-2">
+                <StatPill label="Total emails" value={stats.total_conversations} />
+                <StatPill label="Inbound" value={stats.inbound} />
+                <StatPill label="AI replies" value={stats.ai_generated} />
+                <StatPill
+                  label="Edited (★)"
+                  value={stats.ai_edited}
+                  highlight={stats.ai_edited > 0}
+                  tooltip="Client corrected an AI draft — highest training signal"
+                />
               </div>
 
-              {threads.length > 5 && (
-                <button
-                  onClick={() => setShowAll(!showAll)}
-                  className="mt-2 w-full rounded-lg border py-2 text-[11px] font-medium transition-colors hover:bg-[var(--adm-surface-2)]"
-                  style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
-                >
-                  {showAll ? "Show fewer" : `Show all ${threads.length} contacts`}
-                </button>
+              {/* Signal quality bar */}
+              {stats.outbound > 0 && (
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-text-muted)" }}>
+                      Signal quality
+                    </span>
+                    <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                      {stats.ai_edited} edited · {stats.outbound - stats.ai_generated} human-written · {stats.ai_generated - stats.ai_edited} auto-sent
+                    </span>
+                  </div>
+                  <div className="flex h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: "var(--adm-surface-2)" }}>
+                    {/* Edited (highest) */}
+                    {stats.ai_edited > 0 && (
+                      <div className="h-full" style={{ width: `${Math.round((stats.ai_edited / stats.outbound) * 100)}%`, backgroundColor: "var(--adm-accent)" }} />
+                    )}
+                    {/* Human-written uploads */}
+                    {(stats.outbound - stats.ai_generated) > 0 && (
+                      <div className="h-full" style={{ width: `${Math.round(((stats.outbound - stats.ai_generated) / stats.outbound) * 100)}%`, backgroundColor: "color-mix(in srgb, var(--adm-accent) 50%, transparent)" }} />
+                    )}
+                    {/* Auto-sent (lowest) */}
+                    {(stats.ai_generated - stats.ai_edited) > 0 && (
+                      <div className="h-full" style={{ width: `${Math.round(((stats.ai_generated - stats.ai_edited) / stats.outbound) * 100)}%`, backgroundColor: "var(--adm-surface-2)" }} />
+                    )}
+                  </div>
+                  <div className="mt-1 flex gap-3">
+                    <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                      <span className="inline-block h-2 w-2 rounded-sm mr-1 align-middle" style={{ backgroundColor: "var(--adm-accent)" }} />
+                      Edited
+                    </span>
+                    <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                      <span className="inline-block h-2 w-2 rounded-sm mr-1 align-middle" style={{ backgroundColor: "color-mix(in srgb, var(--adm-accent) 50%, transparent)" }} />
+                      Uploaded
+                    </span>
+                    <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                      <span className="inline-block h-2 w-2 rounded-sm mr-1 align-middle" style={{ backgroundColor: "var(--adm-border)" }} />
+                      Auto-sent
+                    </span>
+                  </div>
+                </div>
               )}
-            </div>
+
+              {/* Extracted voice profile */}
+              {voiceProfile && (
+                <div className="flex flex-col gap-3 rounded-xl border p-4" style={{ borderColor: "color-mix(in srgb, var(--adm-accent) 25%, transparent)", backgroundColor: "var(--adm-accent-bg)" }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-3.5 w-3.5" style={{ color: "var(--adm-accent-text)" }} />
+                      <span className="text-[11px] font-semibold" style={{ color: "var(--adm-accent-text)" }}>
+                        Voice profile — active
+                      </span>
+                    </div>
+                    <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                      {voiceProfile.source_count} emails · {getTimeAgo(new Date(voiceProfile.extracted_at))}
+                    </span>
+                  </div>
+
+                  {voiceProfile.summary && (
+                    <p className="text-[11px] leading-relaxed italic" style={{ color: "var(--adm-text-secondary)" }}>
+                      &ldquo;{voiceProfile.summary}&rdquo;
+                    </p>
+                  )}
+
+                  {voiceProfile.tone_descriptors?.length > 0 && (
+                    <div>
+                      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--adm-text-muted)" }}>Tone</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {voiceProfile.tone_descriptors.map((d, i) => (
+                          <span key={i} className="rounded-md px-2 py-1 text-[10px]" style={{ backgroundColor: "var(--adm-surface)", color: "var(--adm-text-secondary)" }}>
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {voiceProfile.signature_phrases?.length > 0 && (
+                    <div>
+                      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--adm-text-muted)" }}>Signature phrases</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {voiceProfile.signature_phrases.map((p, i) => (
+                          <span key={i} className="rounded-md px-2 py-1 font-mono text-[10px]" style={{ backgroundColor: "var(--adm-surface)", color: "var(--adm-text-secondary)" }}>
+                            &ldquo;{p}&rdquo;
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* No profile yet nudge */}
+              {!voiceProfile && stats.outbound >= 5 && (
+                <div className="rounded-lg border border-dashed px-4 py-3 text-center" style={{ borderColor: "var(--adm-border)" }}>
+                  <p className="text-[11px]" style={{ color: "var(--adm-text-muted)" }}>
+                    You have {stats.outbound} outgoing emails — click <strong>Extract voice</strong> to distill them into a profile.
+                  </p>
+                </div>
+              )}
+
+              {/* Thread list */}
+              {threads.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--adm-text-muted)" }}>
+                    Contacts ({threads.length})
+                  </h4>
+                  <div className="flex flex-col gap-1.5">
+                    {visibleThreads.map((thread) => {
+                      const isExpanded = expandedThread === thread.email;
+                      const threadMessages = recent.filter(
+                        (r) => r.from_email === thread.email || r.to_email === thread.email
+                      );
+                      return (
+                        <div key={thread.email} className="overflow-hidden rounded-lg border" style={{ borderColor: "var(--adm-border)" }}>
+                          <button
+                            onClick={() => setExpandedThread(isExpanded ? null : thread.email)}
+                            className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--adm-surface-2)]"
+                          >
+                            <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold uppercase" style={{ backgroundColor: "var(--adm-accent-bg)", color: "var(--adm-accent-text)" }}>
+                              {thread.email[0]}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[11px] font-medium" style={{ color: "var(--adm-text)" }}>{thread.email}</p>
+                              <div className="mt-0.5 flex items-center gap-2">
+                                <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                                  {thread.inbound} in · {thread.outbound} out
+                                </span>
+                                <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>·</span>
+                                <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                                  {getTimeAgo(new Date(thread.last_at))}
+                                </span>
+                              </div>
+                            </div>
+                            {isExpanded ? (
+                              <ChevronUp className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--adm-text-muted)" }} />
+                            ) : (
+                              <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--adm-text-muted)" }} />
+                            )}
+                          </button>
+
+                          {isExpanded && threadMessages.length > 0 && (
+                            <div className="flex flex-col border-t" style={{ borderColor: "var(--adm-border)" }}>
+                              {threadMessages.slice(0, 8).map((msg) => (
+                                <div key={msg.id} className="flex gap-3 border-b px-3 py-2.5 last:border-b-0" style={{ borderColor: "var(--adm-border)" }}>
+                                  <div className="mt-0.5 flex-shrink-0">
+                                    {msg.direction === "inbound" ? (
+                                      <ArrowDownLeft className="h-3.5 w-3.5" style={{ color: "var(--adm-text-muted)" }} />
+                                    ) : (
+                                      <ArrowUpRight className="h-3.5 w-3.5" style={{ color: "var(--adm-accent-text)" }} />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="mb-0.5 flex items-center gap-2">
+                                      <span className="text-[10px] font-semibold" style={{ color: msg.direction === "outbound" ? "var(--adm-accent-text)" : "var(--adm-text)" }}>
+                                        {msg.direction === "inbound" ? "Lead" : "Reply"}
+                                      </span>
+                                      {msg.was_edited && (
+                                        <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold" style={{ backgroundColor: "color-mix(in srgb, var(--adm-accent) 15%, transparent)", color: "var(--adm-accent-text)" }}>
+                                          ★ edited
+                                        </span>
+                                      )}
+                                      {!msg.was_ai_generated && msg.direction === "outbound" && (
+                                        <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold" style={{ backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text-muted)" }}>
+                                          human
+                                        </span>
+                                      )}
+                                      <span className="ml-auto text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                                        {getTimeAgo(new Date(msg.sent_at))}
+                                      </span>
+                                    </div>
+                                    {msg.subject && (
+                                      <p className="mb-0.5 truncate text-[10px] font-medium" style={{ color: "var(--adm-text-secondary)" }}>
+                                        {msg.subject}
+                                      </p>
+                                    )}
+                                    <p className="line-clamp-2 text-[11px] leading-snug" style={{ color: "var(--adm-text-secondary)" }}>
+                                      {msg.content.slice(0, 200)}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {threads.length > 5 && (
+                    <button
+                      onClick={() => setShowAll(!showAll)}
+                      className="mt-2 w-full rounded-lg border py-2 text-[11px] font-medium transition-colors hover:bg-[var(--adm-surface-2)]"
+                      style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
+                    >
+                      {showAll ? "Show fewer" : `Show all ${threads.length} contacts`}
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

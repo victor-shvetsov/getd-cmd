@@ -23,13 +23,21 @@ export async function GET(
   const { id: clientId } = await params;
   const supabase = createAdminClient();
 
-  // Load all conversations for this client
-  const { data: rows, error } = await supabase
-    .from("lead_conversations")
-    .select("id, direction, from_email, to_email, subject, content, was_ai_generated, was_edited, sent_at, lead_id, automation_run_id")
-    .eq("client_id", clientId)
-    .order("sent_at", { ascending: false })
-    .limit(500);
+  // Load conversations + lead_reply automation config in parallel
+  const [{ data: rows, error }, { data: auto }] = await Promise.all([
+    supabase
+      .from("lead_conversations")
+      .select("id, direction, from_email, to_email, subject, content, was_ai_generated, was_edited, sent_at, lead_id, automation_run_id")
+      .eq("client_id", clientId)
+      .order("sent_at", { ascending: false })
+      .limit(500),
+    supabase
+      .from("automations")
+      .select("config")
+      .eq("client_id", clientId)
+      .eq("automation_key", "lead_reply")
+      .maybeSingle(),
+  ]);
 
   if (error) {
     console.error("[conversations] DB error:", error);
@@ -84,5 +92,9 @@ export async function GET(
   // ── Recent conversations (last 50) ────────────────────────────────────
   const recent = all.slice(0, 50);
 
-  return NextResponse.json({ stats, threads, recent });
+  // ── Voice profile (extracted from automation config) ──────────────────
+  const cfg = (auto?.config ?? {}) as Record<string, unknown>;
+  const voiceProfile = (cfg.voice_profile as Record<string, unknown> | null) ?? null;
+
+  return NextResponse.json({ stats, threads, recent, voice_profile: voiceProfile });
 }
