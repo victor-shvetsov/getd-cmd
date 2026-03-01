@@ -77,6 +77,8 @@ ADMIN_PASSWORD=<from Vercel env vars>
 ANTHROPIC_API_KEY=<from Anthropic console>
 BREVO_API_KEY=<from brevo.com — used for sending AND receiving emails>
 AUTOMATION_WEBHOOK_SECRET=<any random string>
+# Twilio SMS — get values from console.twilio.com → add to Vercel env vars
+# TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
 ```
 
 ---
