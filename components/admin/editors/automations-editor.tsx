@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import useSWR from "swr";
 import {
   Plus, Trash2, ChevronDown, ChevronUp, Zap, ZapOff,
-  RotateCcw, Pencil, Check, X, Settings, RefreshCw,
+  RotateCcw, Check, Settings, RefreshCw,
 } from "lucide-react";
 import { buildSystemPrompt } from "@/lib/automations/lead-reply/workflow";
 
@@ -343,27 +343,6 @@ function AutomationRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<RowTab>("info");
-  const [editing, setEditing] = useState(false);
-  const [label, setLabel] = useState(a.counter_label);
-  const [counterEdit, setCounterEdit] = useState(String(a.counter_value));
-  const [busy, setBusy] = useState(false);
-
-  async function handleSave() {
-    setBusy(true);
-    const updates: Partial<Automation> = {};
-    if (label !== a.counter_label) updates.counter_label = label;
-    const cv = parseInt(counterEdit, 10);
-    if (!isNaN(cv) && cv !== a.counter_value) updates.counter_value = cv;
-    if (Object.keys(updates).length > 0) await onUpdate(a.id, updates);
-    setBusy(false);
-    setEditing(false);
-  }
-
-  function handleCancel() {
-    setEditing(false);
-    setLabel(a.counter_label);
-    setCounterEdit(String(a.counter_value));
-  }
 
   return (
     <div
@@ -425,7 +404,7 @@ function AutomationRow({
             {(["info", "config", "runs"] as RowTab[]).map((tab) => (
               <button
                 key={tab}
-                onClick={() => { setActiveTab(tab); setEditing(false); }}
+                onClick={() => setActiveTab(tab)}
                 className="px-4 py-2 text-[11px] font-semibold capitalize transition-colors"
                 style={{
                   color: activeTab === tab ? "var(--adm-accent)" : "var(--adm-text-muted)",
@@ -443,120 +422,90 @@ function AutomationRow({
           {/* Info tab */}
           {activeTab === "info" && (
             <div className="px-4 py-3">
-              {!editing ? (
-                <div className="flex flex-col gap-3">
-                  <p className="text-[11px]" style={{ color: "var(--adm-text-secondary)" }}>{a.description || "No description"}</p>
-                  <div className="flex flex-wrap gap-3 text-[10px]">
-                    <div>
-                      <span style={{ color: "var(--adm-text-muted)" }}>Order: </span>
-                      <span style={{ color: "var(--adm-text)" }}>{a.sort_order}</span>
-                    </div>
-                    <div>
-                      <span style={{ color: "var(--adm-text-muted)" }}>Updated: </span>
-                      <span style={{ color: "var(--adm-text)" }}>{new Date(a.updated_at).toLocaleDateString()}</span>
-                    </div>
+              <div className="flex flex-col gap-3">
+                <p className="text-[11px]" style={{ color: "var(--adm-text-secondary)" }}>{a.description || "No description"}</p>
+                <div className="flex flex-wrap gap-3 text-[10px]">
+                  <div>
+                    <span style={{ color: "var(--adm-text-muted)" }}>Order: </span>
+                    <span style={{ color: "var(--adm-text)" }}>{a.sort_order}</span>
                   </div>
+                  <div>
+                    <span style={{ color: "var(--adm-text-muted)" }}>Updated: </span>
+                    <span style={{ color: "var(--adm-text)" }}>{new Date(a.updated_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
 
-                  {/* Require approval toggle */}
-                  <div
-                    className="flex items-center justify-between rounded-lg px-3 py-2.5"
-                    style={{ backgroundColor: "var(--adm-surface-2)" }}
+                {/* Require approval toggle */}
+                <div
+                  className="flex items-center justify-between rounded-lg px-3 py-2.5"
+                  style={{ backgroundColor: "var(--adm-surface-2)" }}
+                >
+                  <div>
+                    <p className="text-[11px] font-semibold" style={{ color: "var(--adm-text)" }}>
+                      Require approval before sending
+                    </p>
+                    <p className="text-[10px] mt-0.5" style={{ color: "var(--adm-text-muted)" }}>
+                      Drafts go to a review queue — client approves before sending
+                    </p>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onUpdate(a.id, { require_approval: !a.require_approval }); }}
+                    className="relative h-5 w-9 flex-shrink-0 rounded-full transition-colors"
+                    style={{
+                      backgroundColor: a.require_approval ? "var(--adm-accent)" : "var(--adm-surface)",
+                      border: a.require_approval ? "none" : "1px solid var(--adm-border)",
+                    }}
                   >
-                    <div>
-                      <p className="text-[11px] font-semibold" style={{ color: "var(--adm-text)" }}>
-                        Require approval before sending
-                      </p>
-                      <p className="text-[10px] mt-0.5" style={{ color: "var(--adm-text-muted)" }}>
-                        Drafts go to a review queue — client approves before sending
-                      </p>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onUpdate(a.id, { require_approval: !a.require_approval }); }}
-                      className="relative h-5 w-9 flex-shrink-0 rounded-full transition-colors"
-                      style={{
-                        backgroundColor: a.require_approval ? "var(--adm-accent)" : "var(--adm-surface)",
-                        border: a.require_approval ? "none" : "1px solid var(--adm-border)",
+                    <div
+                      className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all"
+                      style={{ left: a.require_approval ? "calc(100% - 18px)" : "2px" }}
+                    />
+                  </button>
+                </div>
+
+                {/* Notify email — shown when approval mode is on */}
+                {a.require_approval && (
+                  <div className="flex flex-col gap-1 rounded-lg px-3 py-2.5" style={{ backgroundColor: "var(--adm-surface-2)" }}>
+                    <label className="text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>
+                      Notify email when draft is waiting
+                    </label>
+                    <input
+                      type="email"
+                      defaultValue={(a.config.notify_email as string) ?? ""}
+                      onBlur={(e) => {
+                        const val = e.target.value.trim();
+                        if (val !== ((a.config.notify_email as string) ?? "")) {
+                          onUpdate(a.id, { config: { ...a.config, notify_email: val || undefined } });
+                        }
                       }}
-                    >
-                      <div
-                        className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all"
-                        style={{ left: a.require_approval ? "calc(100% - 18px)" : "2px" }}
-                      />
-                    </button>
+                      placeholder="owner@example.com"
+                      className="w-full rounded border px-2 py-1 text-[11px] outline-none focus:ring-1"
+                      style={{
+                        backgroundColor: "var(--adm-surface)",
+                        borderColor: "var(--adm-border)",
+                        color: "var(--adm-text)",
+                      }}
+                    />
                   </div>
+                )}
 
-                  {/* Notify email — shown when approval mode is on */}
-                  {a.require_approval && (
-                    <div className="flex flex-col gap-1 rounded-lg px-3 py-2.5" style={{ backgroundColor: "var(--adm-surface-2)" }}>
-                      <label className="text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>
-                        Notify email when draft is waiting
-                      </label>
-                      <input
-                        type="email"
-                        defaultValue={(a.config.notify_email as string) ?? ""}
-                        onBlur={(e) => {
-                          const val = e.target.value.trim();
-                          if (val !== ((a.config.notify_email as string) ?? "")) {
-                            onUpdate(a.id, { config: { ...a.config, notify_email: val || undefined } });
-                          }
-                        }}
-                        placeholder="owner@example.com"
-                        className="w-full rounded border px-2 py-1 text-[11px] outline-none focus:ring-1"
-                        style={{
-                          backgroundColor: "var(--adm-surface)",
-                          borderColor: "var(--adm-border)",
-                          color: "var(--adm-text)",
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setEditing(true)}
-                      className="flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-medium transition-colors hover:bg-[var(--adm-surface-2)]"
-                      style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
-                    >
-                      <Pencil className="h-3 w-3" /> Edit
-                    </button>
-                    <button
-                      onClick={() => onResetCounter(a.id)}
-                      className="flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-medium transition-colors hover:bg-[var(--adm-surface-2)]"
-                      style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
-                    >
-                      <RotateCcw className="h-3 w-3" /> Reset counter
-                    </button>
-                    <button
-                      onClick={() => { if (confirm("Delete this automation?")) onDelete(a.id); }}
-                      className="flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-medium text-red-500 transition-colors hover:bg-red-50"
-                      style={{ borderColor: "color-mix(in srgb, red 20%, var(--adm-border))" }}
-                    >
-                      <Trash2 className="h-3 w-3" /> Delete
-                    </button>
-                  </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onResetCounter(a.id)}
+                    className="flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-medium transition-colors hover:bg-[var(--adm-surface-2)]"
+                    style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
+                  >
+                    <RotateCcw className="h-3 w-3" /> Reset counter
+                  </button>
+                  <button
+                    onClick={() => { if (confirm("Delete this automation?")) onDelete(a.id); }}
+                    className="flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-medium text-red-500 transition-colors hover:bg-red-50"
+                    style={{ borderColor: "color-mix(in srgb, red 20%, var(--adm-border))" }}
+                  >
+                    <Trash2 className="h-3 w-3" /> Delete
+                  </button>
                 </div>
-              ) : (
-                <div className="flex flex-col gap-2.5">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Counter Label</label>
-                      <input value={label} onChange={(e) => setLabel(e.target.value)} className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }} />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Counter Value</label>
-                      <input type="number" value={counterEdit} onChange={(e) => setCounterEdit(e.target.value)} className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }} />
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-2 pt-1">
-                    <button onClick={handleCancel} className="flex items-center gap-1 rounded-md px-3 py-1.5 text-[11px] font-medium" style={{ color: "var(--adm-text-secondary)" }}>
-                      <X className="h-3 w-3" /> Cancel
-                    </button>
-                    <button onClick={handleSave} disabled={busy} className="flex items-center gap-1 rounded-md px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--adm-accent)" }}>
-                      <Check className="h-3 w-3" /> Save
-                    </button>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -1048,17 +997,24 @@ function relativeTime(iso: string | null): string {
 }
 
 function RunsLog({ automationId, token }: { automationId: string; token: string }) {
-  const fetcher = useCallback(
-    (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
-    [token]
-  );
-  const { data, isLoading, mutate } = useSWR<{ runs: AutomationRun[] }>(
-    `/api/automations/runs?automation_id=${automationId}&limit=20`,
-    fetcher,
-    { revalidateOnMount: true, dedupingInterval: 0 }
-  );
+  const [runs, setRuns] = useState<AutomationRun[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const runs = data?.runs ?? [];
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/automations/runs?automation_id=${automationId}&limit=20`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const data = await res.json() as { runs?: AutomationRun[] };
+      setRuns(data.runs ?? []);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [automationId, token]);
+
+  useEffect(() => { void load(); }, [load]);
 
   return (
     <div className="px-4 py-3 flex flex-col gap-2">
@@ -1067,7 +1023,7 @@ function RunsLog({ automationId, token }: { automationId: string; token: string 
           Recent runs
         </span>
         <button
-          onClick={() => mutate()}
+          onClick={() => void load()}
           className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors hover:bg-[var(--adm-surface-2)]"
           style={{ color: "var(--adm-text-muted)" }}
         >
