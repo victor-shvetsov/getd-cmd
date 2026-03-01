@@ -406,6 +406,36 @@ function AutomationRow({
                   </div>
                 )}
 
+                {/* Notify phone — always shown; approval mode = reply OK/SKIP to act */}
+                <div className="flex flex-col gap-1 rounded-lg px-3 py-2.5" style={{ backgroundColor: "var(--adm-surface-2)" }}>
+                  <label className="text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>
+                    SMS notifications{" "}
+                    <span style={{ color: "var(--adm-text-secondary)", fontWeight: 400 }}>
+                      {a.require_approval ? "— reply OK to approve, SKIP to discard" : "— FYI when auto-replied"}
+                    </span>
+                  </label>
+                  <input
+                    type="tel"
+                    defaultValue={(a.config.notify_phone as string) ?? ""}
+                    onBlur={(e) => {
+                      const val = e.target.value.trim();
+                      if (val !== ((a.config.notify_phone as string) ?? "")) {
+                        onUpdate(a.id, { config: { ...a.config, notify_phone: val || undefined } });
+                      }
+                    }}
+                    placeholder="+4512345678"
+                    className="w-full rounded border px-2 py-1 text-[11px] outline-none focus:ring-1"
+                    style={{
+                      backgroundColor: "var(--adm-surface)",
+                      borderColor: "var(--adm-border)",
+                      color: "var(--adm-text)",
+                    }}
+                  />
+                  <p className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                    E.164 format — powered by Twilio
+                  </p>
+                </div>
+
                 <div className="flex gap-2">
                   <button
                     onClick={() => onResetCounter(a.id)}

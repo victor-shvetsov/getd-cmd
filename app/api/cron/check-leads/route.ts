@@ -5,8 +5,31 @@ import { simpleParser } from "mailparser";
 import { parseLeadEmail } from "@/lib/automations/lead-reply/parse-email";
 import { LeadReplyAutomation } from "@/lib/automations/lead-reply";
 import { extractSmtpConfig, extractImapConfig } from "@/lib/automations/lead-reply/tools";
+import { sendSms } from "@/lib/twilio";
 
 const automation = new LeadReplyAutomation();
+
+/**
+ * Fire-and-forget SMS helper.
+ * @param phone    E.164 phone from automations.config.notify_phone
+ * @param name     Lead's name or email (used in the message body)
+ * @param preview  First part of the email content (trimmed to fit SMS)
+ * @param isApproval  true = draft waiting, false = auto-sent FYI
+ */
+async function notifyLeadSms(
+  phone: string,
+  name: string,
+  preview: string,
+  isApproval: boolean
+): Promise<void> {
+  const displayName = name.trim() || "new lead";
+  const snippet = preview.slice(0, 80).trim();
+  const ellipsis = preview.length > 80 ? "..." : "";
+  const body = isApproval
+    ? `New lead from ${displayName}: "${snippet}${ellipsis}" — Reply OK to send, SKIP to discard.`
+    : `Replied to ${displayName}: "${snippet}${ellipsis}"`;
+  await sendSms(phone, body);
+}
 
 /**
  * GET /api/cron/check-leads
@@ -147,6 +170,9 @@ async function processQueuedRuns({
         { client_id: clientId, slug, config, draftMode: requireApproval, emailAccount }
       );
 
+      const notifyPhone = (config.notify_phone as string) || null;
+      const fromName = (payload.from_name as string) || (payload.from_email as string) || "";
+
       if (requireApproval && result.draftContent) {
         await supabase
           .from("automation_runs")
@@ -156,6 +182,11 @@ async function processQueuedRuns({
             output_summary: result.summary,
           })
           .eq("id", run.id);
+
+        // SMS: notify client a draft is waiting for approval
+        if (notifyPhone) {
+          await notifyLeadSms(notifyPhone, fromName, result.draftContent, true);
+        }
       } else {
         await supabase
           .from("automation_runs")
@@ -195,6 +226,11 @@ async function processQueuedRuns({
               was_edited: false,
               sent_at: new Date().toISOString(),
             });
+          }
+
+          // SMS: FYI notification that reply was sent
+          if (notifyPhone && result.sentContent) {
+            await notifyLeadSms(notifyPhone, fromName, result.sentContent, false);
           }
         }
       }
@@ -382,6 +418,9 @@ async function processMailbox({
             });
           }
 
+          const notifyPhone = (config.notify_phone as string) || null;
+          const leadDisplayName = leadParsed.from_name || leadParsed.from_email;
+
           // ── Queue or reply ───────────────────────────────────────────────
           if (replyDelayMinutes > 0) {
             // Queue for later processing
@@ -433,8 +472,13 @@ async function processMailbox({
               }).select("id").single();
 
               // Note: outbound conversation is logged when the draft is approved
-              // (see app/api/automations/drafts/[runId]/route.ts)
-              void savedRun; // run id stored in automation_runs; approve endpoint uses it
+              // (see app/api/automations/drafts/[runId]/route.ts and webhooks/twilio/route.ts)
+              void savedRun;
+
+              // SMS: notify client a draft is waiting for approval
+              if (notifyPhone && result.draftContent) {
+                await notifyLeadSms(notifyPhone, leadDisplayName, result.draftContent, true);
+              }
             } else {
               // Auto-send path — capture run ID for conversation linkage
               const { data: savedRun } = await supabase.from("automation_runs").insert({
@@ -475,6 +519,11 @@ async function processMailbox({
                     was_edited: false,
                     sent_at: new Date().toISOString(),
                   });
+                }
+
+                // SMS: FYI notification that reply was auto-sent
+                if (notifyPhone && result.sentContent) {
+                  await notifyLeadSms(notifyPhone, leadDisplayName, result.sentContent, false);
                 }
               }
             }
