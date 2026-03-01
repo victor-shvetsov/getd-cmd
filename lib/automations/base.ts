@@ -52,6 +52,11 @@ export interface AutomationResult {
    * Not set when draftMode is false (normal run).
    */
   draftContent?: string;
+  /**
+   * When draftMode was false and the automation sent a message, this is the
+   * actual content that was sent. Used to log outbound conversations.
+   */
+  sentContent?: string;
 }
 
 export interface AutomationRunner {

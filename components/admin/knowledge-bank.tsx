@@ -21,6 +21,10 @@ import {
   CircleDot,
   HelpCircle,
   Wand2,
+  Brain,
+  Mail,
+  ArrowUpRight,
+  ArrowDownLeft,
 } from "lucide-react";
 import { AutoFillPreview } from "@/components/admin/autofill-preview";
 
@@ -514,6 +518,9 @@ export function KnowledgeBank({ clientId, token }: KnowledgeBankProps) {
           }}
         />
       )}
+
+      {/* AI Voice Training */}
+      <AIVoiceTraining clientId={clientId} token={token} />
     </div>
   );
 }
@@ -1021,4 +1028,260 @@ function getTimeAgo(date: Date): string {
   const diffDay = Math.floor(diffHr / 24);
   if (diffDay < 7) return `${diffDay}d ago`;
   return date.toLocaleDateString();
+}
+
+/* ------------------------------------------------------------------ */
+/*  AI Voice Training                                                   */
+/* ------------------------------------------------------------------ */
+
+interface ConversationRow {
+  id: string;
+  direction: "inbound" | "outbound";
+  from_email: string;
+  to_email: string;
+  subject: string | null;
+  content: string;
+  was_ai_generated: boolean;
+  was_edited: boolean;
+  sent_at: string;
+  lead_id: string | null;
+}
+
+interface ConversationStats {
+  total_conversations: number;
+  inbound: number;
+  outbound: number;
+  ai_generated: number;
+  ai_edited: number;
+}
+
+interface ConversationThread {
+  email: string;
+  inbound: number;
+  outbound: number;
+  last_at: string;
+}
+
+interface ConversationsResponse {
+  stats: ConversationStats;
+  threads: ConversationThread[];
+  recent: ConversationRow[];
+}
+
+function AIVoiceTraining({ clientId, token }: { clientId: string; token: string }) {
+  const authFetcher = (url: string) =>
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json());
+
+  const { data, isLoading } = useSWR<ConversationsResponse>(
+    `/api/admin/clients/${clientId}/conversations`,
+    authFetcher
+  );
+
+  const [expandedThread, setExpandedThread] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
+  const stats = data?.stats;
+  const threads = data?.threads ?? [];
+  const recent = data?.recent ?? [];
+
+  const visibleThreads = showAll ? threads : threads.slice(0, 5);
+
+  return (
+    <div className="flex flex-col gap-4 rounded-xl border" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)" }}>
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b px-4 py-3" style={{ borderColor: "var(--adm-border)" }}>
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: "var(--adm-accent-bg)" }}>
+          <Brain className="h-4 w-4" style={{ color: "var(--adm-accent-text)" }} />
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold" style={{ color: "var(--adm-text)" }}>
+            AI Voice Training
+          </h3>
+          <p className="text-[11px]" style={{ color: "var(--adm-text-muted)" }}>
+            Email corpus captured from the monitored inbox — used to fine-tune the AI&apos;s voice
+          </p>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--adm-accent)" }} />
+        </div>
+      ) : !stats || stats.total_conversations === 0 ? (
+        <div className="flex flex-col items-center gap-2 px-4 pb-6 pt-2 text-center">
+          <Mail className="h-8 w-8 opacity-20" style={{ color: "var(--adm-text-muted)" }} />
+          <p className="text-xs font-medium" style={{ color: "var(--adm-text-muted)" }}>No conversations captured yet</p>
+          <p className="text-[11px]" style={{ color: "var(--adm-text-muted)", opacity: 0.7 }}>
+            Emails flowing through the client&apos;s monitored inbox will appear here automatically once the Lead Reply automation is active.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4 px-4 pb-4">
+          {/* Stats */}
+          <div className="grid grid-cols-4 gap-2">
+            <StatPill label="Total emails" value={stats.total_conversations} />
+            <StatPill label="Inbound" value={stats.inbound} />
+            <StatPill label="AI replies sent" value={stats.ai_generated} />
+            <StatPill
+              label="Edited by client"
+              value={stats.ai_edited}
+              highlight={stats.ai_edited > 0}
+              tooltip="High-signal: client modified AI draft before sending"
+            />
+          </div>
+
+          {/* Training quality bar */}
+          {stats.ai_generated > 0 && (
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--adm-text-muted)" }}>
+                  Training corpus quality
+                </span>
+                <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                  {stats.ai_edited} edited / {stats.ai_generated} AI replies
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: "var(--adm-surface-2)" }}>
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${Math.round((stats.ai_edited / stats.ai_generated) * 100)}%`,
+                    backgroundColor: "var(--adm-accent)",
+                  }}
+                />
+              </div>
+              <p className="mt-1 text-[10px]" style={{ color: "var(--adm-text-muted)", opacity: 0.7 }}>
+                Edited replies are the highest training signal — they show exactly where the AI deviated from the client&apos;s voice.
+              </p>
+            </div>
+          )}
+
+          {/* Thread list */}
+          {threads.length > 0 && (
+            <div>
+              <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--adm-text-muted)" }}>
+                Contacts ({threads.length})
+              </h4>
+              <div className="flex flex-col gap-1.5">
+                {visibleThreads.map((thread) => {
+                  const isExpanded = expandedThread === thread.email;
+                  const threadMessages = recent.filter(
+                    (r) => r.from_email === thread.email || r.to_email === thread.email
+                  );
+                  return (
+                    <div key={thread.email} className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--adm-border)" }}>
+                      <button
+                        onClick={() => setExpandedThread(isExpanded ? null : thread.email)}
+                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--adm-surface-2)]"
+                      >
+                        <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold uppercase" style={{ backgroundColor: "var(--adm-accent-bg)", color: "var(--adm-accent-text)" }}>
+                          {thread.email[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-[11px] font-medium" style={{ color: "var(--adm-text)" }}>{thread.email}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                              {thread.inbound} in · {thread.outbound} out
+                            </span>
+                            <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>·</span>
+                            <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                              {getTimeAgo(new Date(thread.last_at))}
+                            </span>
+                          </div>
+                        </div>
+                        {isExpanded ? (
+                          <ChevronUp className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--adm-text-muted)" }} />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--adm-text-muted)" }} />
+                        )}
+                      </button>
+
+                      {isExpanded && threadMessages.length > 0 && (
+                        <div className="border-t flex flex-col gap-0" style={{ borderColor: "var(--adm-border)" }}>
+                          {threadMessages.slice(0, 8).map((msg) => (
+                            <div key={msg.id} className="flex gap-3 px-3 py-2.5 border-b last:border-b-0" style={{ borderColor: "var(--adm-border)" }}>
+                              <div className="mt-0.5 flex-shrink-0">
+                                {msg.direction === "inbound" ? (
+                                  <ArrowDownLeft className="h-3.5 w-3.5" style={{ color: "var(--adm-text-muted)" }} />
+                                ) : (
+                                  <ArrowUpRight className="h-3.5 w-3.5" style={{ color: "var(--adm-accent-text)" }} />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <span className="text-[10px] font-semibold" style={{ color: msg.direction === "outbound" ? "var(--adm-accent-text)" : "var(--adm-text)" }}>
+                                    {msg.direction === "inbound" ? "Lead" : "Reply"}
+                                  </span>
+                                  {msg.was_edited && (
+                                    <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold" style={{ backgroundColor: "color-mix(in srgb, var(--adm-accent) 15%, transparent)", color: "var(--adm-accent-text)" }}>
+                                      edited
+                                    </span>
+                                  )}
+                                  <span className="ml-auto text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                                    {getTimeAgo(new Date(msg.sent_at))}
+                                  </span>
+                                </div>
+                                {msg.subject && (
+                                  <p className="text-[10px] font-medium mb-0.5 truncate" style={{ color: "var(--adm-text-secondary)" }}>
+                                    {msg.subject}
+                                  </p>
+                                )}
+                                <p className="text-[11px] leading-snug line-clamp-2" style={{ color: "var(--adm-text-secondary)" }}>
+                                  {msg.content.slice(0, 200)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {threads.length > 5 && (
+                <button
+                  onClick={() => setShowAll(!showAll)}
+                  className="mt-2 w-full rounded-lg border py-2 text-[11px] font-medium transition-colors hover:bg-[var(--adm-surface-2)]"
+                  style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
+                >
+                  {showAll ? "Show fewer" : `Show all ${threads.length} contacts`}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatPill({
+  label,
+  value,
+  highlight = false,
+  tooltip,
+}: {
+  label: string;
+  value: number;
+  highlight?: boolean;
+  tooltip?: string;
+}) {
+  return (
+    <div
+      className="flex flex-col rounded-lg px-3 py-2.5"
+      style={{ backgroundColor: highlight ? "var(--adm-accent-bg)" : "var(--adm-surface-2)" }}
+      title={tooltip}
+    >
+      <span
+        className="text-lg font-bold tabular-nums"
+        style={{ color: highlight ? "var(--adm-accent-text)" : "var(--adm-text)" }}
+      >
+        {value}
+      </span>
+      <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+        {label}
+      </span>
+    </div>
+  );
 }

@@ -91,11 +91,6 @@ export function AutomationsEditor({ clientId, token }: Props) {
   const automations = data?.automations ?? [];
 
   const [showPresets, setShowPresets] = useState(false);
-  const [addingCustom, setAddingCustom] = useState(false);
-  const [customKey, setCustomKey] = useState("");
-  const [customName, setCustomName] = useState("");
-  const [customDesc, setCustomDesc] = useState("");
-  const [customLabel, setCustomLabel] = useState("actions completed");
 
   const existingKeys = new Set(automations.map((a) => a.automation_key));
 
@@ -113,28 +108,6 @@ export function AutomationsEditor({ clientId, token }: Props) {
     });
     mutate();
     setShowPresets(false);
-  }
-
-  async function createCustom() {
-    if (!customKey.trim() || !customName.trim()) return;
-    await fetch("/api/automations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        client_id: clientId,
-        automation_key: customKey.trim().toLowerCase().replace(/\s+/g, "_"),
-        name: customName.trim(),
-        description: customDesc.trim(),
-        counter_label: customLabel.trim() || "actions completed",
-        sort_order: automations.length,
-      }),
-    });
-    mutate();
-    setAddingCustom(false);
-    setCustomKey("");
-    setCustomName("");
-    setCustomDesc("");
-    setCustomLabel("actions completed");
   }
 
   async function updateAutomation(id: string, updates: Partial<Automation>) {
@@ -183,7 +156,7 @@ export function AutomationsEditor({ clientId, token }: Props) {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => { setShowPresets(!showPresets); setAddingCustom(false); }}
+            onClick={() => setShowPresets(!showPresets)}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-colors"
             style={{ backgroundColor: "var(--adm-accent)", color: "white" }}
           >
@@ -200,7 +173,7 @@ export function AutomationsEditor({ clientId, token }: Props) {
           style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)" }}
         >
           <p className="mb-3 text-[11px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>
-            Choose a preset or create custom
+            Choose a preset
           </p>
           <div className="flex flex-col gap-2">
             {PRESETS.filter((p) => !existingKeys.has(p.automation_key)).map((preset) => (
@@ -234,63 +207,7 @@ export function AutomationsEditor({ clientId, token }: Props) {
               </p>
             )}
 
-            <button
-              onClick={() => setAddingCustom(!addingCustom)}
-              className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-[11px] font-medium transition-colors hover:border-[var(--adm-accent)]"
-              style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Create custom automation
-            </button>
           </div>
-
-          {addingCustom && (
-            <div className="mt-3 flex flex-col gap-2 border-t pt-3" style={{ borderColor: "var(--adm-border)" }}>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  value={customKey}
-                  onChange={(e) => setCustomKey(e.target.value)}
-                  placeholder="automation_key"
-                  className="rounded-md border px-2.5 py-1.5 text-xs font-mono outline-none"
-                  style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)" }}
-                />
-                <input
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
-                  placeholder="Display name"
-                  className="rounded-md border px-2.5 py-1.5 text-xs outline-none"
-                  style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)" }}
-                />
-              </div>
-              <input
-                value={customDesc}
-                onChange={(e) => setCustomDesc(e.target.value)}
-                placeholder="Description (shown to client)"
-                className="rounded-md border px-2.5 py-1.5 text-xs outline-none"
-                style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)" }}
-              />
-              <input
-                value={customLabel}
-                onChange={(e) => setCustomLabel(e.target.value)}
-                placeholder="Counter label (e.g. emails sent)"
-                className="rounded-md border px-2.5 py-1.5 text-xs outline-none"
-                style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text)" }}
-              />
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setAddingCustom(false)} className="rounded-md px-3 py-1.5 text-[11px] font-medium" style={{ color: "var(--adm-text-secondary)" }}>
-                  Cancel
-                </button>
-                <button
-                  onClick={createCustom}
-                  disabled={!customKey.trim() || !customName.trim()}
-                  className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
-                  style={{ backgroundColor: "var(--adm-accent)" }}
-                >
-                  Create
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -985,10 +902,16 @@ const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }
   running:          { bg: "color-mix(in srgb, #8b5cf6 12%, transparent)", color: "#7c3aed", label: "Running" },
 };
 
-function relativeTime(iso: string | null): string {
+function relativeTime(iso: string | null, isFuture = false): string {
   if (!iso) return "—";
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
+  const diff = new Date(iso).getTime() - Date.now();
+  if (isFuture) {
+    const mins = Math.ceil(diff / 60_000);
+    if (mins <= 1) return "in <1 min";
+    if (mins < 60) return `in ${mins} min`;
+    return `in ${Math.ceil(mins / 60)}h`;
+  }
+  const mins = Math.floor(-diff / 60_000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
@@ -1041,6 +964,7 @@ function RunsLog({ automationId, token }: { automationId: string; token: string 
 
       {runs.map((run) => {
         const style = STATUS_STYLES[run.status] ?? STATUS_STYLES.pending;
+        const isQueued = run.status === "queued";
         const timestamp = run.ran_at ?? run.process_after;
         return (
           <div
@@ -1056,7 +980,7 @@ function RunsLog({ automationId, token }: { automationId: string; token: string 
                 {style.label}
               </span>
               <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
-                {relativeTime(timestamp)}
+                {relativeTime(timestamp, isQueued)}
               </span>
             </div>
             {run.input_summary && (

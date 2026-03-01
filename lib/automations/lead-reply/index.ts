@@ -108,6 +108,7 @@ export class LeadReplyAutomation implements AutomationRunner {
     return {
       success: true,
       summary: `Replied to ${lead.from_name} <${lead.from_email}>`,
+      sentContent: replyText,
       increment: 1,
     };
   }

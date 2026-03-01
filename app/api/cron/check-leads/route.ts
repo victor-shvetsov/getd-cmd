@@ -20,8 +20,10 @@ const automation = new LeadReplyAutomation();
  *
  *   Phase 2 — Poll inboxes:
  *     Connect to client's IMAP inbox, fetch unread emails, parse with Claude Haiku.
+ *     Returning contacts (already replied to): capture inbound row, skip auto-reply.
+ *     New leads: save lead + insert inbound conversation row.
  *     If reply_delay_minutes > 0: save as 'queued' with process_after = now + delay.
- *     Otherwise: generate reply with Claude Sonnet and send immediately.
+ *     Otherwise: generate reply with Claude Sonnet, send, insert outbound conversation row.
  *
  * Email credentials: clients.email_account JSONB (preferred) → automations.config (legacy fallback).
  */
@@ -176,6 +178,24 @@ async function processQueuedRuns({
               .update({ replied_at: new Date().toISOString() })
               .eq("id", leadId);
           }
+
+          // Log outbound conversation for voice training corpus
+          if (result.sentContent && leadId) {
+            const smtpCfg = extractSmtpConfig(emailAccount ?? config);
+            await supabase.from("lead_conversations").insert({
+              client_id: clientId,
+              lead_id: leadId,
+              automation_run_id: run.id,
+              direction: "outbound",
+              from_email: smtpCfg?.user ?? (config.from_email as string) ?? "",
+              to_email: payload.from_email as string,
+              subject: payload.subject ? `Re: ${payload.subject as string}` : "Thanks for reaching out",
+              content: result.sentContent,
+              was_ai_generated: true,
+              was_edited: false,
+              sent_at: new Date().toISOString(),
+            });
+          }
         }
       }
 
@@ -219,7 +239,7 @@ async function processMailbox({
   const replyDelayMinutes =
     typeof config.reply_delay_minutes === "number" ? config.reply_delay_minutes : 0;
 
-  const client = new ImapFlow({
+  const imapClient = new ImapFlow({
     host: imap.host,
     port: imap.port,
     secure: true,
@@ -227,20 +247,20 @@ async function processMailbox({
     logger: false,
   });
 
-  await client.connect();
+  await imapClient.connect();
   let processed = 0;
 
   try {
-    const lock = await client.getMailboxLock("INBOX");
+    const lock = await imapClient.getMailboxLock("INBOX");
 
     try {
       // Search for unread emails received in the last 24 hours
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const uids = await client.search({ seen: false, since }, { uid: true });
+      const uids = await imapClient.search({ seen: false, since }, { uid: true });
 
       if (!uids.length) return 0;
 
-      for await (const msg of client.fetch(uids, { source: true, uid: true }, { uid: true })) {
+      for await (const msg of imapClient.fetch(uids, { source: true, uid: true }, { uid: true })) {
         try {
           const parsed = await simpleParser(msg.source);
 
@@ -249,20 +269,21 @@ async function processMailbox({
           const subject = parsed.subject ?? "";
           const emailBody = parsed.text || parsed.html?.replace(/<[^>]*>/g, " ") || "";
           const messageId = parsed.messageId ?? null;
+          const inReplyTo = parsed.inReplyTo ?? null;
+          const emailDate = parsed.date ?? new Date();
 
           if (!fromEmail || !emailBody) {
-            await client.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
+            await imapClient.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
             continue;
           }
 
           // Skip replies we sent ourselves (avoid reply loops)
           if (fromEmail.toLowerCase() === imap.user.toLowerCase()) {
-            await client.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
+            await imapClient.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
             continue;
           }
 
-          // Deduplicate by Message-ID — guards against IMAP flag resets or
-          // the same email appearing twice (e.g. after a mailbox restore)
+          // Deduplicate by Message-ID
           if (messageId) {
             const { data: existingRun } = await supabase
               .from("automation_runs")
@@ -272,12 +293,46 @@ async function processMailbox({
               .maybeSingle();
 
             if (existingRun) {
-              await client.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
+              await imapClient.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
               continue;
             }
           }
 
-          // Parse with Claude Haiku
+          // ── Returning contacts check ─────────────────────────────────────
+          // Auto-reply only for first-time leads. If we've replied to this sender
+          // before, capture it as an inbound continuation for the training corpus
+          // but do NOT trigger another auto-reply.
+          const { data: existingLead } = await supabase
+            .from("leads")
+            .select("id")
+            .eq("client_id", clientId)
+            .eq("from_email", fromEmail.toLowerCase())
+            .not("replied_at", "is", null)
+            .limit(1)
+            .maybeSingle();
+
+          if (existingLead) {
+            // Log inbound continuation for voice training (thread context)
+            await supabase.from("lead_conversations").insert({
+              client_id: clientId,
+              lead_id: existingLead.id,
+              direction: "inbound",
+              from_email: fromEmail,
+              to_email: imap.user,
+              subject: subject || null,
+              content: emailBody.slice(0, 10000),
+              message_id: messageId,
+              in_reply_to: inReplyTo,
+              was_ai_generated: false,
+              was_edited: false,
+              sent_at: emailDate.toISOString(),
+            });
+            await imapClient.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
+            console.log(`[check-leads] ${slug}: skipped auto-reply for returning contact ${fromEmail}`);
+            continue;
+          }
+
+          // ── Parse with Claude Haiku ──────────────────────────────────────
           let leadParsed;
           try {
             leadParsed = await parseLeadEmail(
@@ -286,16 +341,16 @@ async function processMailbox({
             );
           } catch (err) {
             console.error(`[check-leads] Parse failed for ${slug}:`, err);
-            await client.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
+            await imapClient.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
             continue;
           }
 
           if (!leadParsed.from_email) {
-            await client.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
+            await imapClient.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
             continue;
           }
 
-          // Save lead to DB
+          // ── Save lead to DB ──────────────────────────────────────────────
           const { data: lead } = await supabase
             .from("leads")
             .insert({
@@ -309,6 +364,25 @@ async function processMailbox({
             .select("id")
             .single();
 
+          // ── Log inbound conversation ─────────────────────────────────────
+          if (lead?.id) {
+            await supabase.from("lead_conversations").insert({
+              client_id: clientId,
+              lead_id: lead.id,
+              direction: "inbound",
+              from_email: fromEmail,
+              to_email: imap.user,
+              subject: subject || null,
+              content: emailBody.slice(0, 10000),
+              message_id: messageId,
+              in_reply_to: inReplyTo,
+              was_ai_generated: false,
+              was_edited: false,
+              sent_at: emailDate.toISOString(),
+            });
+          }
+
+          // ── Queue or reply ───────────────────────────────────────────────
           if (replyDelayMinutes > 0) {
             // Queue for later processing
             const processAfter = new Date(Date.now() + replyDelayMinutes * 60 * 1000).toISOString();
@@ -341,7 +415,7 @@ async function processMailbox({
             );
 
             if (requireApproval && result.draftContent) {
-              await supabase.from("automation_runs").insert({
+              const { data: savedRun } = await supabase.from("automation_runs").insert({
                 automation_id: automationId,
                 client_id: clientId,
                 status: "pending_approval",
@@ -356,9 +430,14 @@ async function processMailbox({
                 },
                 input_summary: `Lead from ${leadParsed.from_email}`,
                 output_summary: result.summary,
-              });
+              }).select("id").single();
+
+              // Note: outbound conversation is logged when the draft is approved
+              // (see app/api/automations/drafts/[runId]/route.ts)
+              void savedRun; // run id stored in automation_runs; approve endpoint uses it
             } else {
-              await supabase.from("automation_runs").insert({
+              // Auto-send path — capture run ID for conversation linkage
+              const { data: savedRun } = await supabase.from("automation_runs").insert({
                 automation_id: automationId,
                 client_id: clientId,
                 status: result.success ? "success" : "error",
@@ -366,7 +445,7 @@ async function processMailbox({
                 output_summary: result.summary,
                 error: result.error ?? null,
                 payload: { imap_message_id: messageId },
-              });
+              }).select("id").single();
 
               if (result.success) {
                 await supabase.rpc("increment_automation_counter", {
@@ -379,12 +458,30 @@ async function processMailbox({
                     .update({ replied_at: new Date().toISOString() })
                     .eq("id", lead.id);
                 }
+
+                // Log outbound conversation for voice training corpus
+                if (result.sentContent && lead?.id) {
+                  const smtpCfg = extractSmtpConfig(emailAccount ?? config);
+                  await supabase.from("lead_conversations").insert({
+                    client_id: clientId,
+                    lead_id: lead.id,
+                    automation_run_id: savedRun?.id ?? null,
+                    direction: "outbound",
+                    from_email: smtpCfg?.user ?? (config.from_email as string) ?? "",
+                    to_email: leadParsed.from_email,
+                    subject: (leadParsed.subject || subject) ? `Re: ${leadParsed.subject || subject}` : "Thanks for reaching out",
+                    content: result.sentContent,
+                    was_ai_generated: true,
+                    was_edited: false,
+                    sent_at: new Date().toISOString(),
+                  });
+                }
               }
             }
           }
 
           // Mark as read — prevents re-processing on next cron run
-          await client.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
+          await imapClient.messageFlagsAdd(String(msg.uid), ["\\Seen"], { uid: true });
           processed++;
         } catch (msgErr) {
           console.error(`[check-leads] Error on message for ${slug}:`, msgErr);
@@ -394,7 +491,7 @@ async function processMailbox({
       lock.release();
     }
   } finally {
-    await client.logout();
+    await imapClient.logout();
   }
 
   return processed;

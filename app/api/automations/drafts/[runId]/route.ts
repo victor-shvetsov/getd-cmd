@@ -166,7 +166,7 @@ export async function PATCH(
     .from("automation_runs")
     .update({
       status: "approved",
-      output_summary: `Approved and sent — ${new Date().toISOString()}`,
+      output_summary: `Approved and sent`,
     })
     .eq("id", runId);
 
@@ -174,6 +174,32 @@ export async function PATCH(
     p_automation_id: automation.id,
     p_increment: 1,
   });
+
+  // ── Log outbound conversation for voice training corpus ───────────────
+  // was_edited = true when the client modified the AI draft before sending
+  if (automation.automation_key === "lead_reply") {
+    const wasEdited = (content?.trim() ?? "") !== "" && content!.trim() !== (run.draft_content ?? "").trim();
+    const toEmail = payload.from_email as string | undefined;
+    const subject = payload.subject as string | undefined;
+    const leadId = payload.lead_id as string | null;
+
+    if (toEmail) {
+      const smtp = extractSmtpConfig(clientEmailAccount ?? cfg);
+      await supabase.from("lead_conversations").insert({
+        client_id,
+        lead_id: leadId,
+        automation_run_id: runId,
+        direction: "outbound",
+        from_email: smtp?.user ?? (cfg.from_email as string) ?? "",
+        to_email: toEmail,
+        subject: subject ? `Re: ${subject}` : "Thanks for reaching out",
+        content: finalContent,
+        was_ai_generated: true,
+        was_edited: wasEdited,
+        sent_at: new Date().toISOString(),
+      });
+    }
+  }
 
   return NextResponse.json({ ok: true, status: "approved" });
 }

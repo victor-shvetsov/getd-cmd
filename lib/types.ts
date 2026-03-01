@@ -531,6 +531,25 @@ export interface ActivityEntryRow {
   updated_at: string;
 }
 
+// ---- Lead Conversations (email corpus for AI voice training) ----
+export interface LeadConversationRow {
+  id: string;
+  client_id: string;
+  lead_id: string | null;
+  automation_run_id: string | null;
+  direction: "inbound" | "outbound";
+  from_email: string;
+  to_email: string;
+  subject: string | null;
+  content: string;
+  message_id: string | null;
+  in_reply_to: string | null;
+  was_ai_generated: boolean;
+  was_edited: boolean;
+  sent_at: string;
+  created_at: string;
+}
+
 // ---- Automations (AI-powered, Claude API, toggles + counters) ----
 export interface AutomationRow {
   id: string;
