@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import useSWR from "swr";
 import {
   Plus, Trash2, ChevronDown, ChevronUp, Zap, ZapOff,
-  Copy, RotateCcw, Pencil, Check, X, Settings,
+  RotateCcw, Pencil, Check, X, Settings, RefreshCw,
 } from "lucide-react";
 import { buildSystemPrompt } from "@/lib/automations/lead-reply/workflow";
 
@@ -157,11 +157,6 @@ export function AutomationsEditor({ clientId, token }: Props) {
   async function resetCounter(id: string) {
     await updateAutomation(id, { counter_value: 0 } as Partial<Automation>);
   }
-
-  /* -- Webhook URL --------------------------------------------------- */
-
-  const webhookBase = typeof window !== "undefined" ? window.location.origin : "";
-  const inboundUrl = `${webhookBase}/api/webhooks/automation`;
 
   /* -- Render -------------------------------------------------------- */
 
@@ -318,35 +313,11 @@ export function AutomationsEditor({ clientId, token }: Props) {
             onUpdate={updateAutomation}
             onDelete={deleteAutomation}
             onResetCounter={resetCounter}
+            token={token}
           />
         ))}
       </div>
 
-      {/* Counter increment endpoint */}
-      {automations.length > 0 && (
-        <div className="rounded-xl border p-4" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)" }}>
-          <p className="mb-2 text-[11px] font-bold" style={{ color: "var(--adm-text)" }}>
-            Counter Increment Endpoint
-          </p>
-          <p className="mb-2 text-[10px]" style={{ color: "var(--adm-text-secondary)" }}>
-            External services can increment counters by POSTing to this endpoint.
-            Send <code className="rounded bg-[var(--adm-surface)] px-1 py-0.5 text-[9px] font-mono">{'{ "client_id": "...", "automation_key": "lead_reply" }'}</code> to increment by 1,
-            or add <code className="rounded bg-[var(--adm-surface)] px-1 py-0.5 text-[9px] font-mono">{'"increment": 5'}</code> for custom amounts.
-          </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 truncate rounded-md border px-2.5 py-1.5 text-[10px] font-mono" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface)", color: "var(--adm-text-muted)" }}>
-              POST {inboundUrl}
-            </code>
-            <button
-              onClick={() => navigator.clipboard.writeText(inboundUrl)}
-              className="flex items-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-medium transition-colors hover:bg-[var(--adm-surface)]"
-              style={{ borderColor: "var(--adm-border)", color: "var(--adm-text-muted)" }}
-            >
-              <Copy className="h-3 w-3" /> Copy
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -355,18 +326,20 @@ export function AutomationsEditor({ clientId, token }: Props) {
 /*  Single row                                                         */
 /* ------------------------------------------------------------------ */
 
-type RowTab = "info" | "config";
+type RowTab = "info" | "config" | "runs";
 
 function AutomationRow({
   automation: a,
   onUpdate,
   onDelete,
   onResetCounter,
+  token,
 }: {
   automation: Automation;
   onUpdate: (id: string, u: Partial<Automation>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onResetCounter: (id: string) => Promise<void>;
+  token: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<RowTab>("info");
@@ -455,7 +428,7 @@ function AutomationRow({
         <div className="border-t" style={{ borderColor: "var(--adm-border)" }}>
           {/* Tabs */}
           <div className="flex border-b" style={{ borderColor: "var(--adm-border)" }}>
-            {(["info", "config"] as RowTab[]).map((tab) => (
+            {(["info", "config", "runs"] as RowTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setEditing(false); }}
@@ -468,7 +441,7 @@ function AutomationRow({
               >
                 {tab === "config" ? (
                   <span className="flex items-center gap-1"><Settings className="h-3 w-3" /> Configure</span>
-                ) : "Info"}
+                ) : tab === "runs" ? "Runs" : "Info"}
               </button>
             ))}
           </div>
@@ -617,6 +590,11 @@ function AutomationRow({
               )}
             </div>
           )}
+
+          {/* Runs tab */}
+          {activeTab === "runs" && (
+            <RunsLog automationId={a.id} token={token} />
+          )}
         </div>
       )}
     </div>
@@ -691,28 +669,28 @@ function LeadReplyConfigPanel({
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <Field label="From Name" value={fromName} onChange={setFromName} placeholder="Thomas Christensen" />
-        <Field label="From Email" value={fromEmail} onChange={setFromEmail} placeholder="thomas@lucaffe.dk" type="email" />
+        <Field label="From Name" value={fromName} onChange={setFromName} placeholder="Jane Smith" />
+        <Field label="From Email" value={fromEmail} onChange={setFromEmail} placeholder="jane@business.com" type="email" />
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Field label="Owner Name" value={ownerName} onChange={setOwnerName} placeholder="Thomas" />
-        <Field label="Business Name" value={businessName} onChange={setBusinessName} placeholder="La Caffè" />
+        <Field label="Owner Name" value={ownerName} onChange={setOwnerName} placeholder="Jane" />
+        <Field label="Business Name" value={businessName} onChange={setBusinessName} placeholder="Acme Ltd" />
       </div>
 
       <TextareaField
         label="Signature"
         value={signature}
         onChange={setSignature}
-        placeholder={"Med venlig hilsen\nThomas Christensen\nLa Caffè · +45 12 34 56 78"}
+        placeholder={"Best regards,\nJane Smith\nAcme Ltd · +1 555 123 4567"}
         rows={3}
       />
 
       <TextareaField
         label="Voice Samples"
-        hint="Paste 1–3 example replies Thomas would write. Separate samples with --- on its own line."
+        hint="Paste 1–3 example replies the owner would write. Separate samples with --- on its own line."
         value={voiceSamples}
         onChange={setVoiceSamples}
-        placeholder={"Hej! Tak fordi du skriver – vi er altid glade for nye gæster.\n---\nSå hyggeligt at høre fra dig! Vi har plads fra fredag."}
+        placeholder={"Hi! Thanks for reaching out — we'd love to help.\n---\nGreat to hear from you! Let me know what you need and we'll sort it out."}
         rows={6}
       />
 
@@ -721,7 +699,7 @@ function LeadReplyConfigPanel({
         hint="Paste one real contact form notification email here. Claude uses this to understand the format of incoming emails."
         value={emailExample}
         onChange={setEmailExample}
-        placeholder={"From: WordPress <noreply@lucaffe.dk>\nSubject: New Contact Form Submission\n\nName: John Smith\nEmail: john@example.com\nMessage: Hi, I wanted to ask about..."}
+        placeholder={"From: WordPress <noreply@business.com>\nSubject: New Contact Form Submission\n\nName: John Smith\nEmail: john@example.com\nMessage: Hi, I wanted to ask about..."}
         rows={6}
       />
 
@@ -730,7 +708,7 @@ function LeadReplyConfigPanel({
         hint="Extra rules appended to the default prompt. Leave blank if using the full prompt override below."
         value={customInstructions}
         onChange={setCustomInstructions}
-        placeholder={"Always mention free delivery on orders over 500 DKK.\nNever quote specific prices — invite them to call for a quote."}
+        placeholder={"Always mention the free consultation offer.\nNever quote specific prices — invite them to call instead."}
         rows={4}
       />
 
@@ -881,23 +859,23 @@ function ReviewCollectorConfigPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-2">
-        <Field label="Owner Name" value={ownerName} onChange={setOwnerName} placeholder="Thomas" />
-        <Field label="Business Name" value={businessName} onChange={setBusinessName} placeholder="La Caffè" />
+        <Field label="Owner Name" value={ownerName} onChange={setOwnerName} placeholder="Jane" />
+        <Field label="Business Name" value={businessName} onChange={setBusinessName} placeholder="Acme Ltd" />
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Field label="From Name" value={fromName} onChange={setFromName} placeholder="Thomas Christensen" />
-        <Field label="From Email" value={fromEmail} onChange={setFromEmail} placeholder="thomas@lucaffe.dk" type="email" />
+        <Field label="From Name" value={fromName} onChange={setFromName} placeholder="Jane Smith" />
+        <Field label="From Email" value={fromEmail} onChange={setFromEmail} placeholder="jane@business.com" type="email" />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Review Platform" value={reviewPlatform} onChange={setReviewPlatform} placeholder="Trustpilot" />
-        <Field label="Review Link" value={reviewLink} onChange={setReviewLink} placeholder="https://trustpilot.com/review/..." />
+        <Field label="Review Link" value={reviewLink} onChange={setReviewLink} placeholder="https://trustpilot.com/review/your-business" />
       </div>
       <TextareaField
         label="Voice Samples"
-        hint="Paste 1–3 example messages Thomas would send. Separate with --- on its own line."
+        hint="Paste 1–3 example messages the owner would send. Separate with --- on its own line."
         value={voiceSamples}
         onChange={setVoiceSamples}
-        placeholder={"Hej! Det var en fornøjelse. Hvis du har et øjeblik, vil vi sætte stor pris på en anmeldelse.\n---\nTak for dit besøg! En anmeldelse betyder verden for os."}
+        placeholder={"Thanks so much — it was a pleasure working with you! If you have a moment, a quick review would mean a lot.\n---\nReally glad we could help! We'd love to hear your feedback — it only takes a minute."}
         rows={5}
       />
       <SaveButton busy={busy} saved={saved} onSave={handleSave} />
@@ -950,8 +928,8 @@ function SocialPosterConfigPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-2">
-        <Field label="Owner Name" value={ownerName} onChange={setOwnerName} placeholder="Thomas" />
-        <Field label="Business Name" value={businessName} onChange={setBusinessName} placeholder="La Caffè" />
+        <Field label="Owner Name" value={ownerName} onChange={setOwnerName} placeholder="Jane" />
+        <Field label="Business Name" value={businessName} onChange={setBusinessName} placeholder="Acme Ltd" />
       </div>
       <Field
         label="Platforms"
@@ -963,14 +941,14 @@ function SocialPosterConfigPanel({
         label="Hashtags"
         value={hashtags}
         onChange={setHashtags}
-        placeholder="#lacaffe #kaffe #københavn"
+        placeholder="#yourbusiness #industry #location"
       />
       <TextareaField
         label="Voice Samples"
-        hint="Paste 1–3 example posts Thomas would write. Separate with --- on its own line."
+        hint="Paste 1–3 example posts the owner would write. Separate with --- on its own line."
         value={voiceSamples}
         onChange={setVoiceSamples}
-        placeholder={"Frisk kaffe til en frisk mandag ☕ Kom forbi og få din favorit.\n---\nNyt på menuen! Prøv vores sæsonens specialitet – kun her i butikken."}
+        placeholder={"Just finished another great project — so proud of the team 💪 Swipe to see the before & after.\n---\nNew week, new opportunities. Here's what we've been working on lately 👇"}
         rows={6}
       />
       <SaveButton busy={busy} saved={saved} onSave={handleSave} />
@@ -1043,6 +1021,122 @@ function TextareaField({
         className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none resize-y font-mono"
         style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
       />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Runs log                                                           */
+/* ------------------------------------------------------------------ */
+
+interface AutomationRun {
+  id: string;
+  status: string;
+  input_summary: string | null;
+  output_summary: string | null;
+  error: string | null;
+  ran_at: string | null;
+  process_after: string | null;
+}
+
+const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }> = {
+  success:          { bg: "color-mix(in srgb, #22c55e 12%, transparent)", color: "#16a34a", label: "Success" },
+  approved:         { bg: "color-mix(in srgb, #22c55e 12%, transparent)", color: "#16a34a", label: "Approved" },
+  error:            { bg: "color-mix(in srgb, #ef4444 12%, transparent)", color: "#dc2626", label: "Error" },
+  queued:           { bg: "color-mix(in srgb, #3b82f6 12%, transparent)", color: "#2563eb", label: "Queued" },
+  pending_approval: { bg: "color-mix(in srgb, #f59e0b 12%, transparent)", color: "#d97706", label: "Pending approval" },
+  discarded:        { bg: "color-mix(in srgb, #6b7280 12%, transparent)", color: "#6b7280", label: "Discarded" },
+  pending:          { bg: "color-mix(in srgb, #6b7280 12%, transparent)", color: "#6b7280", label: "Pending" },
+  running:          { bg: "color-mix(in srgb, #8b5cf6 12%, transparent)", color: "#7c3aed", label: "Running" },
+};
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return "—";
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function RunsLog({ automationId, token }: { automationId: string; token: string }) {
+  const fetcher = useCallback(
+    (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+    [token]
+  );
+  const { data, isLoading, mutate } = useSWR<{ runs: AutomationRun[] }>(
+    `/api/automations/runs?automation_id=${automationId}&limit=20`,
+    fetcher
+  );
+
+  const runs = data?.runs ?? [];
+
+  return (
+    <div className="px-4 py-3 flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--adm-text-muted)" }}>
+          Recent runs
+        </span>
+        <button
+          onClick={() => mutate()}
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors hover:bg-[var(--adm-surface-2)]"
+          style={{ color: "var(--adm-text-muted)" }}
+        >
+          <RefreshCw className="h-3 w-3" /> Refresh
+        </button>
+      </div>
+
+      {isLoading && (
+        <p className="text-[11px] py-4 text-center" style={{ color: "var(--adm-text-muted)" }}>Loading…</p>
+      )}
+
+      {!isLoading && runs.length === 0 && (
+        <p className="text-[11px] py-4 text-center" style={{ color: "var(--adm-text-muted)" }}>No runs yet</p>
+      )}
+
+      {runs.map((run) => {
+        const style = STATUS_STYLES[run.status] ?? STATUS_STYLES.pending;
+        const timestamp = run.ran_at ?? run.process_after;
+        return (
+          <div
+            key={run.id}
+            className="rounded-lg border p-3 flex flex-col gap-1.5"
+            style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)" }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={{ backgroundColor: style.bg, color: style.color }}
+              >
+                {style.label}
+              </span>
+              <span className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
+                {relativeTime(timestamp)}
+              </span>
+            </div>
+            {run.input_summary && (
+              <p className="text-[11px] leading-snug" style={{ color: "var(--adm-text-secondary)" }}>
+                <span className="font-semibold" style={{ color: "var(--adm-text-muted)" }}>In: </span>
+                {run.input_summary}
+              </p>
+            )}
+            {run.output_summary && (
+              <p className="text-[11px] leading-snug" style={{ color: "var(--adm-text-secondary)" }}>
+                <span className="font-semibold" style={{ color: "var(--adm-text-muted)" }}>Out: </span>
+                {run.output_summary}
+              </p>
+            )}
+            {run.error && (
+              <p className="text-[11px] leading-snug" style={{ color: "#dc2626" }}>
+                <span className="font-semibold">Error: </span>
+                {run.error}
+              </p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

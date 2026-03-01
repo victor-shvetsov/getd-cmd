@@ -15,7 +15,7 @@ interface EmailAccountEditorProps {
  *
  * Configures two separate email boxes stored in clients.email_account JSONB:
  *   - IMAP inbox  (leads@domain) — polled every 5 min for new leads
- *   - SMTP sender (victor@domain) — replies sent FROM here; client picks up conversation
+ *   - SMTP sender (owner@domain) — replies sent FROM here; client picks up conversation
  *
  * Saved as: { imap: { host, port, user, pass }, smtp: { host, port, user, pass } }
  *
@@ -149,7 +149,7 @@ export function EmailAccountEditor({ clientId, token, emailAccount, onSaved }: E
         <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-40" />
         <div className="flex flex-col items-center gap-0.5 text-center">
           <span className="font-semibold" style={{ color: "var(--adm-text)" }}>Reply Sender</span>
-          <span className="opacity-70">victor@domain</span>
+          <span className="opacity-70">owner@domain</span>
           <span className="opacity-50">SMTP — sends</span>
         </div>
       </div>
@@ -170,7 +170,7 @@ export function EmailAccountEditor({ clientId, token, emailAccount, onSaved }: E
                 type="email"
                 value={imapUser}
                 onChange={(e) => setImapUser(e.target.value)}
-                placeholder="leads@autoclicks.io"
+                placeholder="leads@business.com"
                 className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none"
                 style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
               />
@@ -216,7 +216,7 @@ export function EmailAccountEditor({ clientId, token, emailAccount, onSaved }: E
             </div>
           </div>
           <p className="text-[10px]" style={{ color: "var(--adm-text-muted)" }}>
-            Default port: 993 (SSL). Siteground: gnldm1093.siteground.biz
+            Default port: 993 (SSL).
           </p>
         </div>
 
@@ -242,7 +242,7 @@ export function EmailAccountEditor({ clientId, token, emailAccount, onSaved }: E
                 type="email"
                 value={smtpUser}
                 onChange={(e) => setSmtpUser(e.target.value)}
-                placeholder="victor@autoclicks.io"
+                placeholder="owner@business.com"
                 className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none"
                 style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }}
               />
