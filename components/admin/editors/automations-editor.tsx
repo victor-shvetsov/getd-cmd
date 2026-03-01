@@ -344,8 +344,6 @@ function AutomationRow({
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<RowTab>("info");
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(a.name);
-  const [desc, setDesc] = useState(a.description);
   const [label, setLabel] = useState(a.counter_label);
   const [counterEdit, setCounterEdit] = useState(String(a.counter_value));
   const [busy, setBusy] = useState(false);
@@ -353,8 +351,6 @@ function AutomationRow({
   async function handleSave() {
     setBusy(true);
     const updates: Partial<Automation> = {};
-    if (name !== a.name) updates.name = name;
-    if (desc !== a.description) updates.description = desc;
     if (label !== a.counter_label) updates.counter_label = label;
     const cv = parseInt(counterEdit, 10);
     if (!isNaN(cv) && cv !== a.counter_value) updates.counter_value = cv;
@@ -365,8 +361,6 @@ function AutomationRow({
 
   function handleCancel() {
     setEditing(false);
-    setName(a.name);
-    setDesc(a.description);
     setLabel(a.counter_label);
     setCounterEdit(String(a.counter_value));
   }
@@ -545,21 +539,13 @@ function AutomationRow({
                 <div className="flex flex-col gap-2.5">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Name</label>
-                      <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }} />
-                    </div>
-                    <div>
                       <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Counter Label</label>
                       <input value={label} onChange={(e) => setLabel(e.target.value)} className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }} />
                     </div>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Description</label>
-                    <input value={desc} onChange={(e) => setDesc(e.target.value)} className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Counter Value</label>
-                    <input type="number" value={counterEdit} onChange={(e) => setCounterEdit(e.target.value)} className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }} />
+                    <div>
+                      <label className="mb-1 block text-[10px] font-semibold" style={{ color: "var(--adm-text-muted)" }}>Counter Value</label>
+                      <input type="number" value={counterEdit} onChange={(e) => setCounterEdit(e.target.value)} className="w-full rounded-md border px-2.5 py-1.5 text-xs outline-none" style={{ borderColor: "var(--adm-border)", backgroundColor: "var(--adm-surface-2)", color: "var(--adm-text)" }} />
+                    </div>
                   </div>
                   <div className="flex justify-end gap-2 pt-1">
                     <button onClick={handleCancel} className="flex items-center gap-1 rounded-md px-3 py-1.5 text-[11px] font-medium" style={{ color: "var(--adm-text-secondary)" }}>
@@ -1068,7 +1054,8 @@ function RunsLog({ automationId, token }: { automationId: string; token: string 
   );
   const { data, isLoading, mutate } = useSWR<{ runs: AutomationRun[] }>(
     `/api/automations/runs?automation_id=${automationId}&limit=20`,
-    fetcher
+    fetcher,
+    { revalidateOnMount: true, dedupingInterval: 0 }
   );
 
   const runs = data?.runs ?? [];

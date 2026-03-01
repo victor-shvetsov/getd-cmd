@@ -2,6 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse, type NextRequest } from "next/server";
 import { isAdminRequest } from "@/lib/admin-auth";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/automations/runs?automation_id=...&limit=20
  *
