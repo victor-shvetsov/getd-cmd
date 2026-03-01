@@ -41,11 +41,13 @@ export class LeadReplyAutomation implements AutomationRunner {
       };
     }
 
-    if (!cfg.from_email) {
+    // Allow either explicit from_email in config OR a connected email_account with SMTP
+    const hasSmtp = !!(config.emailAccount && extractSmtpConfig(config.emailAccount as Record<string, unknown>));
+    if (!cfg.from_email && !hasSmtp) {
       return {
         success: false,
         summary: "",
-        error: "Automation not configured: missing from_email in client config",
+        error: "Automation not configured: set from_email in config or connect an email account",
       };
     }
 

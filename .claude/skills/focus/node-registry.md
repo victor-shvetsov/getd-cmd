@@ -22,7 +22,7 @@ Referenced by the `/focus` skill.
 
 | Argument(s) | Parent node | Sub-node scope | Key files |
 |-------------|------------|----------------|-----------|
-| `lead-reply` | automations-engine | Lead Reply automation | `lib/automations/lead-reply/index.ts` · `lib/automations/lead-reply/workflow.ts` · `lib/automations/lead-reply/tools.ts` · `app/api/automations/[key]/trigger/route.ts` |
+| `lead-reply` | automations-engine | Lead Reply automation | `lib/automations/lead-reply/index.ts` · `lib/automations/lead-reply/workflow.ts` · `lib/automations/lead-reply/tools.ts` · `app/api/cron/check-leads/route.ts` · `app/api/automations/drafts/route.ts` · `app/api/automations/drafts/[runId]/route.ts` · `app/api/webhooks/twilio/route.ts` · `lib/twilio.ts` · `app/api/admin/clients/[id]/conversations/route.ts` |
 | `social-poster` | automations-engine | Social Poster automation | `lib/automations/social-poster/index.ts` · `lib/automations/social-poster/workflow.ts` · `lib/automations/social-poster/tools.ts` |
 | `review-collector` | automations-engine | Review Collector automation | `lib/automations/review-collector/index.ts` · `lib/automations/review-collector/workflow.ts` · `lib/automations/review-collector/tools.ts` |
 | `sales-tab`, `sales` | client-portal | Sales tab only | `components/tabs/sales-tab.tsx` · `app/api/sales/route.ts` |
@@ -48,6 +48,7 @@ Check these before starting a session — if the migration is not applied, the n
 | Node | Migration file | Status |
 |------|---------------|--------|
 | automations-engine | `scripts/003_automation_runs.sql` | ✅ Applied (DB has draft_content, payload, all status values) |
+| lead-reply | `scripts/004_lead_conversations.sql` | ✅ Applied |
 | payments | `stripe_webhook_idempotency` migration | ✅ Applied |
 
 ---

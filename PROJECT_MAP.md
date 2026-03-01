@@ -130,8 +130,8 @@ graph TD
 
 **Status:** `in-progress`
 **Description:** AI-powered automations running in TypeScript on Vercel. WAT pattern: Workflow + Agent + Tools.
-**What works:** Full Lead Reply pipeline (parse → generate → draft/send), approval queue DB + UI, admin config panel, inbound Resend webhook. DB schema fully applied.
-**What's missing:** Social Poster and Review Collector need production testing. Voice samples not yet linked from Knowledge Hub into automation config.
+**What works:** Full Lead Reply pipeline end-to-end — IMAP polling, Claude parsing, voice-matched reply, auto-send + approval modes, delayed queue, SMS notifications + SMS-based approval, AI voice training corpus. DB schema fully applied.
+**What's missing:** Social Poster and Review Collector need production testing. Voice samples not yet auto-linked from Knowledge Hub entries into automation config.
 
 ### Sub-nodes (each is its own Level 2 diagram)
 - Lead Reply (`lib/automations/lead-reply/`)
@@ -140,17 +140,21 @@ graph TD
 
 ### Target state
 - All three automations fully working on Casper's account
-- Approval queue: drafts stored in `automation_runs` with `status: pending_approval`
-- Client sees approval queue in Automations tab
-- Notification email sent when draft is ready for review
-- Each automation has voice samples from Knowledge Bank
+- Voice samples auto-linked from Knowledge Hub entries into automation config (currently manual extraction job)
+- Social Poster and Review Collector production-tested
 
 ### Key files
 - `lib/automations/base.ts` — interface
 - `lib/automations/registry.ts`
-- `lib/automations/lead-reply/` — index.ts, workflow.ts, tools.ts
-- `app/api/automations/[key]/trigger/route.ts`
-- `scripts/003_automation_runs.sql`
+- `lib/automations/lead-reply/` — index.ts, workflow.ts, tools.ts, parse-email.ts
+- `app/api/cron/check-leads/route.ts` — IMAP poller + queue processor (every 5 min)
+- `app/api/automations/drafts/route.ts` — GET pending drafts (client-facing)
+- `app/api/automations/drafts/[runId]/route.ts` — PATCH approve/discard via web
+- `app/api/webhooks/twilio/route.ts` — PATCH approve/discard via SMS reply
+- `lib/twilio.ts` — Twilio SMS send + webhook validation
+- `app/api/admin/clients/[id]/conversations/` — voice training corpus API
+- `scripts/003_automation_runs.sql` — ✅ applied
+- `scripts/004_lead_conversations.sql` — ✅ applied
 
 ### Skills
 - `/new-automation` — scaffold a new automation
@@ -159,11 +163,13 @@ graph TD
 ### Changelog
 - n8n completely dropped, replaced with TypeScript WAT pattern
 - `automation_runs` table applied to prod — includes `draft_content`, `payload`, all approval statuses
-- Approval mode fully wired: `require_approval` toggle → draft stored → client approves in Automations tab
-- Draft notification email (`lib/email.ts`) — notifies `config.notify_email` when draft ready
-- Lead Reply workflow hardened: JSON parse error handling in `parse-email.ts`, language detection rule added to `workflow.ts`
-- Inbound email domain made configurable via `NEXT_PUBLIC_RESEND_INBOUND_DOMAIN` env var
-- `003_automation_runs.sql` updated to reflect actual applied DB schema
+- **IMAP polling** replaces Resend inbound webhook — `check-leads` cron polls inbox directly via ImapFlow
+- Returning contacts check: auto-reply skipped for senders already replied to; inbound email still logged for corpus
+- Approval mode fully wired: `require_approval` toggle → pending_approval → client approves in Automations tab (web) or by SMS reply
+- Delayed queue: `reply_delay_minutes` → `queued` status → Phase 1 processes on next cron tick
+- **SMS via Twilio**: `notify_phone` config field; SMS on draft creation (approval) and auto-send (FYI); `POST /api/webhooks/twilio` handles OK/SKIP replies
+- **AI Voice Training corpus**: `lead_conversations` table captures every inbound/outbound email; `was_edited` marks high-signal edits; admin thread upload (Claude Haiku) + voice extraction (Claude Sonnet) pipeline
+- `from_email` validation relaxed: allows clients with `email_account` SMTP only (no explicit config field needed)
 
 ---
 
@@ -232,7 +238,7 @@ graph TD
 
 | Node | Description | Priority |
 |------|-------------|----------|
-| Approval Queue | Client-facing queue for reviewing automation drafts | High (needed for Casper) |
+| ~~Approval Queue~~ | ✅ Shipped — web + SMS approval both working | Done |
 | Admin Team Access | Multi-user admin with roles | Medium |
 | SaaS Licensing | White-label for other agencies | Low (future) |
 | Content Generation | KW + URL + Knowledge Hub → copy drafts | Medium |
